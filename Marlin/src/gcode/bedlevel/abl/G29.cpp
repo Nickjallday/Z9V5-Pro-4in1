@@ -597,9 +597,13 @@ G29_TYPE GcodeSuite::G29() {
     measured_z = 0;
 		float newz = 0.0;
 
-#if ABL_GRID
-	#if ENABLED(AUTO_UPDATA_PROBE_Z_OFFSET)
-	if(parser.seen('N')){	
+    #if ABL_GRID
+ 	#if ENABLED(AUTO_UPDATA_PROBE_Z_OFFSET)
+	if(parser.seen('N')){		
+		float offsetz[5];
+		//float sum_offsetz = 0;
+		float max_offsetz = -10.0;
+		float min_offsetz = 10.0;
 		#if HAS_LCD_MENU
 		ui.return_to_status();
 		LCD_MESSAGEPGM_P(PSTR("To catch offset"));
@@ -609,55 +613,76 @@ G29_TYPE GcodeSuite::G29() {
 		DWIN_G29_Show_Messge(G29_CATCH_START);
 		#endif
 		
-		float max_offsetz = -100.0;
-		float min_offsetz = 100.0;
-		LOOP_L_N(i, 4){
+		LOOP_L_N(i, 5){
 		  switch(i)
 		  {
 		      case 0:
-				  	probePos.x = PROBING_MARGIN;
+			  	probePos.x = PROBING_MARGIN;
 		        probePos.y = PROBING_MARGIN;				
 			  	break;
 		      case 1:
-				  	probePos.x = (X_BED_SIZE - PROBING_MARGIN);
+			  	probePos.x = (X_BED_SIZE - PROBING_MARGIN);
 		        probePos.y = PROBING_MARGIN;				
-			  	break;		      
+			  	break;
 		      case 2:
-				  	probePos.x = PROBING_MARGIN;
-		        probePos.y = (Y_BED_SIZE - PROBING_MARGIN);				
+			  	probePos.x = X_CENTER;
+		        probePos.y = Y_CENTER;				
 			  	break;
 		      case 3:
-				  	probePos.x = (X_BED_SIZE - PROBING_MARGIN);
+			  	probePos.x = PROBING_MARGIN;
+		        probePos.y = (Y_BED_SIZE - PROBING_MARGIN);				
+			  	break;
+		      case 4:
+			  	probePos.x = (X_BED_SIZE - PROBING_MARGIN);
 		        probePos.y = (Y_BED_SIZE - PROBING_MARGIN);				
 			  	break;
 		  }
 		  probe.offset.z = 0;
-		  measured_z = probe.probe_at_point(probePos, PROBE_PT_RAISE, 4, true, false);
+		  measured_z = probe.probe_at_point(probePos, PROBE_PT_STOW, 4, true, false);
 		  if(isnan(measured_z)){
-				TERN_(HAS_LCD_MENU,LCD_MESSAGEPGM_P(PSTR("Fail! Move down Probe.")));
-				TERN_(HAS_DWIN_LCD,DWIN_G29_Show_Messge(G29_CATCH_PROBE_TOO_HIGH));
-				G29_RETURN(isnan(measured_z));		
+		  	#if HAS_LCD_MENU
+			LCD_MESSAGEPGM_P(PSTR("Fail! Move down Probe."));
+			#endif
+
+			#if HAS_DWIN_LCD
+			DWIN_G29_Show_Messge(G29_CATCH_PROBE_TOO_HIGH);
+			#endif
+			G29_RETURN(isnan(measured_z));		
 		  }
-		  else{
-				#if HAS_DWIN_LCD
-				DWIN_G29_Show_Messge(G29_CATCH_NORMAL,i+1);
-				#endif
-				if(measured_z > max_offsetz) max_offsetz = measured_z;
-			  if(measured_z < min_offsetz) min_offsetz = measured_z;
+		  else{		  	
+		  	offsetz[i] = measured_z;
+			#if HAS_DWIN_LCD
+			DWIN_G29_Show_Messge(G29_CATCH_NORMAL,i+1);
+			#endif
 		  }
 		}
-		SERIAL_ECHOLNPAIR("max_offsetz = ", max_offsetz);
-		SERIAL_ECHOLNPAIR("min_offsetz = ", min_offsetz);
-		if(ABS(max_offsetz - min_offsetz) > 2.0){			
-			TERN_(HAS_LCD_MENU,LCD_MESSAGEPGM_P(PSTR("fail, manual level!")));
-			TERN_(HAS_DWIN_LCD,DWIN_G29_Show_Messge(G29_CATCH_FAIL));
+		LOOP_L_N(i, 5){
+			if(offsetz[i] > max_offsetz)
+				max_offsetz = offsetz[i];
+		    if(offsetz[i] < min_offsetz)
+				min_offsetz = offsetz[i];			
+		}
+		if(max_offsetz - min_offsetz > 1.0){
+			#if HAS_LCD_MENU
+			LCD_MESSAGEPGM_P(PSTR("fail, manual level!"));
+			#endif
+
+			#if HAS_DWIN_LCD
+			DWIN_G29_Show_Messge(G29_CATCH_FAIL);
+			#endif
 			G29_RETURN(false);
-		}		
+		}
 		probe.offset.z = 0.0 - min_offsetz;
-		SERIAL_ECHOLNPAIR("probe.offset.z = ", probe.offset.z);
-		TERN_(EEPROM_SETTINGS,	settings.save());
-		TERN_(HAS_LCD_MENU,	LCD_MESSAGEPGM_P(PSTR("Offset catched!")));
-		TERN_(HAS_DWIN_LCD,DWIN_G29_Show_Messge(G29_CATCH_DONE));		
+		#ifdef EEPROM_SETTINGS
+		settings.save();				
+		#endif
+		#if HAS_LCD_MENU		
+		LCD_MESSAGEPGM_P(PSTR("Offset catched!"));
+		#endif
+
+		#if HAS_DWIN_LCD
+		DWIN_G29_Show_Messge(G29_CATCH_DONE);
+		#endif
 		G29_RETURN(isnan(measured_z));
 	}
 	else	
