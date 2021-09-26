@@ -47,7 +47,6 @@ extern uint8_t marlin_debug_flags;
 #define DEBUGGING(F) (marlin_debug_flags & (MARLIN_DEBUG_## F))
 
 #define SERIAL_BOTH 0x7F
-	
 #if HAS_MULTI_SERIAL
   extern int8_t serial_port_index;
   #define _PORT_REDIRECT(n,p)   REMEMBER(n,serial_port_index,p)
@@ -55,27 +54,50 @@ extern uint8_t marlin_debug_flags;
 
   #ifdef SERIAL_CATCHALL
     #define SERIAL_OUT(WHAT, V...) (void)CAT(MYSERIAL,SERIAL_CATCHALL).WHAT(V)
-  #else		
-    #if (HAS_WIFI_SERIAL && HAS_MYSERIAL1)
-    #define SERIAL_OUT(WHAT, V...) do{ \
-      if ( !serial_port_index || serial_port_index == SERIAL_BOTH) (void)MYSERIAL0.WHAT(V); \
-			if ( serial_port_index) (void)MYSERIAL1.WHAT(V); (void)WIFI_SERIAL.WHAT(V);\
-    }while(0)
-    #elif (HAS_WIFI_SERIAL && !HAS_MYSERIAL1)
-		#define SERIAL_OUT(WHAT, V...) do{ \
-      if ( !serial_port_index || serial_port_index == SERIAL_BOTH) (void)MYSERIAL0.WHAT(V); \
-			if ( serial_port_index) (void)WIFI_SERIAL.WHAT(V);\
-    }while(0)
-    #elif (!HAS_WIFI_SERIAL && HAS_MYSERIAL1)
-		#define SERIAL_OUT(WHAT, V...) do{ \
-      if ( !serial_port_index || serial_port_index == SERIAL_BOTH) (void)MYSERIAL0.WHAT(V); \
-			if ( serial_port_index) (void)MYSERIAL1.WHAT(V);\
-    }while(0)
-    #else
-		#define SERIAL_OUT(WHAT, V...) do{ \
-      if ( !serial_port_index || serial_port_index == SERIAL_BOTH) (void)MYSERIAL0.WHAT(V); \
-    }while(0)
-		#endif
+  #else
+		#if ENABLED(DEBUG_DWIN_LCD)			
+			#if (HAS_WIFI_SERIAL && HAS_MYSERIAL1)
+			#define SERIAL_OUT(WHAT, V...) do{ \
+				if ( !serial_port_index || serial_port_index == SERIAL_BOTH) {(void)MYSERIAL0.WHAT(V); (void)WIFI_SERIAL.WHAT(V);}\
+				if ( serial_port_index) {(void)MYSERIAL1.WHAT(V); (void)WIFI_SERIAL.WHAT(V);}\
+			}while(0)
+			#elif (HAS_WIFI_SERIAL && !HAS_MYSERIAL1)
+			#define SERIAL_OUT(WHAT, V...) do{ \
+				if ( !serial_port_index || serial_port_index == SERIAL_BOTH) {(void)MYSERIAL0.WHAT(V); (void)WIFI_SERIAL.WHAT(V);} \
+				if ( serial_port_index) (void)WIFI_SERIAL.WHAT(V);\
+			}while(0)
+			#elif (!HAS_WIFI_SERIAL && HAS_MYSERIAL1)
+			#define SERIAL_OUT(WHAT, V...) do{ \
+				if ( !serial_port_index || serial_port_index == SERIAL_BOTH) (void)MYSERIAL0.WHAT(V); \
+				if ( serial_port_index) (void)MYSERIAL1.WHAT(V);\
+			}while(0)
+			#else
+			#define SERIAL_OUT(WHAT, V...) do{ \
+				if ( !serial_port_index || serial_port_index == SERIAL_BOTH) (void)MYSERIAL0.WHAT(V); \
+			}while(0)
+			#endif
+		#else
+	    #if (HAS_WIFI_SERIAL && HAS_MYSERIAL1)
+	    #define SERIAL_OUT(WHAT, V...) do{ \
+	      if ( !serial_port_index || serial_port_index == SERIAL_BOTH) (void)MYSERIAL0.WHAT(V); \
+				if ( serial_port_index) {(void)MYSERIAL1.WHAT(V); (void)WIFI_SERIAL.WHAT(V);}\
+	    }while(0)
+	    #elif (HAS_WIFI_SERIAL && !HAS_MYSERIAL1)
+			#define SERIAL_OUT(WHAT, V...) do{ \
+	      if ( !serial_port_index || serial_port_index == SERIAL_BOTH) (void)MYSERIAL0.WHAT(V); \
+				if ( serial_port_index) (void)WIFI_SERIAL.WHAT(V);\
+	    }while(0)
+	    #elif (!HAS_WIFI_SERIAL && HAS_MYSERIAL1)
+			#define SERIAL_OUT(WHAT, V...) do{ \
+	      if ( !serial_port_index || serial_port_index == SERIAL_BOTH) (void)MYSERIAL0.WHAT(V); \
+				if ( serial_port_index) (void)MYSERIAL1.WHAT(V);\
+	    }while(0)
+	    #else
+			#define SERIAL_OUT(WHAT, V...) do{ \
+	      if ( !serial_port_index || serial_port_index == SERIAL_BOTH) (void)MYSERIAL0.WHAT(V); \
+	    }while(0)
+			#endif
+		#endif//ENABLED(DEBUG_DWIN_LCD)
   #endif
 
   #define SERIAL_ASSERT(P)      if(serial_port_index!=(P)){ debugger(); }

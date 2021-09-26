@@ -103,7 +103,7 @@ void GcodeSuite::M1001() {
   TERN_(MIXING_EXTRUDER, mixer.reset_vtools());
   
   // Re-select the last printed file in the UI
-  TERN_(SD_REPRINT_LAST_SELECTED_FILE, ui.reselect_last_file());
+  TERN_(SD_REPRINT_LAST_SELECTED_FILE, ui.reselect_last_file());	
 }
 
 #endif // SDSUPPORT

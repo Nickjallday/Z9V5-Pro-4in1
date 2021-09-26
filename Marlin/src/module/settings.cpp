@@ -53,7 +53,7 @@
 #include "temperature.h"
 
 #if HAS_DWIN_LCD
-  #include "../lcd/dwin/e3v2/dwin.h"
+  #include "../lcd/dwin/dwin_ui/dwin.h"
 #endif
 
 #include "../lcd/ultralcd.h"
@@ -258,21 +258,29 @@ typedef struct SettingsDataStruct {
             #endif
             ;
   #endif
-
   //
   // BLTOUCH
   //
   #if ENABLED(BLTOUCH)
   bool bltouch_last_written_mode;
 	#endif
-
   
   //
   // language
   //
+  #if HAS_DWIN_LCD
   uint8_t dwin_last_language;
-  uint8_t dwin_last_Title_Memu;
-	bool dwin_autoLeveling_Menu;  
+  uint8_t dwin_last_Title_Memu;	
+	bool dwin_autoLeveling_Menu; 
+	bool dwin_autoshutdown; 
+	#endif
+
+	//
+	//WiFi feature
+	//
+	#if ENABLED(OPTION_WIFI_MODULE)
+	bool wifi_enabled;
+	#endif
 
 	//
 	//bed coating heigth
@@ -280,8 +288,6 @@ typedef struct SettingsDataStruct {
 	#if ENABLED(OPTION_BED_COATING)
 	float bed_coating_thickness;
 	#endif
-	
-	bool wifi_enabled;
 
   //
   // DELTA / [XYZ]_DUAL_ENDSTOPS
@@ -822,6 +828,7 @@ void MarlinSettings::postprocess() {
 		//
 		// language
 		//
+		#if HAS_DWIN_LCD
 		{
 			_FIELD_TEST(dwin_last_language);
 			const uint8_t dwin_last_language = HMI_flag.language;
@@ -830,12 +837,28 @@ void MarlinSettings::postprocess() {
 			_FIELD_TEST(dwin_last_Title_Memu);
 			const uint8_t dwin_last_Title_Memu = HMI_flag.Title_Menu_Backup;
 			EEPROM_WRITE(dwin_last_Title_Memu);
-			
-			_FIELD_TEST(dwin_autoLeveling_Menu);
-			const bool dwin_autoLeveling_Menu = TERN(LCD_BED_LEVELING, HMI_flag.Auto_Leveling_Menu_Fg, false);
-			EEPROM_WRITE(dwin_autoLeveling_Menu);
-		}
 
+			_FIELD_TEST(dwin_autoLeveling_Menu);
+			const bool dwin_autoLeveling_Menu = TERN(LCD_BED_LEVELING, HMI_flag.Leveling_Menu_Fg, false);
+			EEPROM_WRITE(dwin_autoLeveling_Menu);
+
+			_FIELD_TEST(dwin_autoshutdown);
+			const bool dwin_autoshutdown = TERN(OPTION_AUTOPOWEROFF, HMI_flag.Autoshutdown_enabled, false);
+			EEPROM_WRITE(dwin_autoshutdown);
+		}
+		#endif
+
+		//
+		//WiFi
+		//
+		#if ENABLED(OPTION_WIFI_MODULE)
+		{
+      _FIELD_TEST(wifi_enabled);
+			const bool wifi_enabled = WiFi_Enabled;			
+      EEPROM_WRITE(wifi_enabled);
+    }
+		#endif
+		
 		//
 		//bed coating heigth
 		//
@@ -845,16 +868,7 @@ void MarlinSettings::postprocess() {
 			const float bed_coating_thickness = coating_thickness;
 			EEPROM_WRITE(bed_coating_thickness);
 		}	
-		#endif		
-		
-		//
-		//WiFi
-		//
-		{
-      _FIELD_TEST(wifi_enabled);
-			const bool wifi_enabled = TERN(OPTION_WIFI_MODULE, WiFi_Enabled, false);			
-      EEPROM_WRITE(wifi_enabled);
-    }		
+		#endif
 	
     //
     // DELTA Geometry or Dual Endstops offsets
@@ -1737,6 +1751,7 @@ void MarlinSettings::postprocess() {
 		  //
 			// language
 			//
+			#if HAS_DWIN_LCD
 			{
 				_FIELD_TEST(dwin_last_language);
 				const uint8_t &dwin_last_language = HMI_flag.language;
@@ -1746,14 +1761,28 @@ void MarlinSettings::postprocess() {
 				const uint8_t &dwin_last_Title_Memu = HMI_flag.Title_Menu_Backup;
 				EEPROM_READ(dwin_last_Title_Memu);				
 				
-				_FIELD_TEST(dwin_autoLeveling_Menu);
-				#ifdef LCD_BED_LEVELING
-				const bool &dwin_autoLeveling_Menu = HMI_flag.Auto_Leveling_Menu_Fg;
-				#else
-				bool dwin_autoLeveling_Menu;
-				#endif
+				_FIELD_TEST(dwin_autoLeveling_Menu);												
+				bool dwin_autoLeveling_Menu = false;				
 				EEPROM_READ(dwin_autoLeveling_Menu);
+				TERN_(LCD_BED_LEVELING,HMI_flag.Leveling_Menu_Fg = dwin_autoLeveling_Menu);
+				
+				_FIELD_TEST(dwin_autoshutdown);												
+				bool dwin_autoshutdown = false;				
+				EEPROM_READ(dwin_autoshutdown);
+				TERN_(OPTION_AUTOPOWEROFF,HMI_flag.Autoshutdown_enabled = dwin_autoshutdown);
 			}
+			#endif
+
+			//
+		  // WiFi
+		  //
+		  #if ENABLED(OPTION_WIFI_MODULE)
+			{			
+        _FIELD_TEST(wifi_enabled);				
+        const bool &wifi_enabled = WiFi_Enabled;
+        EEPROM_READ(wifi_enabled);
+      }
+			#endif
 
 			//
 		  // Bed coating Heigth
@@ -1766,18 +1795,6 @@ void MarlinSettings::postprocess() {
 		   }
 			#endif
 
-			//
-		  // WiFi
-		  //
-			{			
-        _FIELD_TEST(wifi_enabled);				
-				#if ENABLED(OPTION_WIFI_MODULE)
-          const bool &wifi_enabled = WiFi_Enabled;
-				#else
-          bool wifi_enabled;
-				#endif
-        EEPROM_READ(wifi_enabled);
-      }
 			
       //
       // DELTA Geometry or Dual Endstops offsets
@@ -2689,27 +2706,20 @@ void MarlinSettings::reset() {
   //  bltouch.last_written_mode;
   //#endif
 #if HAS_DWIN_LCD
-  //
-  // language
-  //
   HMI_flag.language = 0;
-  HMI_flag.Title_Menu_Backup = 7;
-	
-	#ifdef LCD_BED_LEVELING
-	HMI_flag.Auto_Leveling_Menu_Fg = false;
-	#endif
-	
+  HMI_flag.Title_Menu_Backup = 7;	
+	TERN_(LCD_BED_LEVELING,  HMI_flag.Leveling_Menu_Fg = false);
+	TERN_(OPTION_AUTOPOWEROFF,  HMI_flag.Autoshutdown_enabled = false);
 #endif//HAS_DWIN_LCD
-
-	//
-	// Bed Coating Thickness
-	//
-	TERN_(OPTION_BED_COATING,  coating_thickness = BED_COATING_THICKNESS);
 
 	//
 	// WiFi
 	//
 	TERN_(OPTION_WIFI_MODULE,  WiFi_Enabled = false);
+	//
+	// Bed Coating Thickness
+	//
+	TERN_(OPTION_BED_COATING,  coating_thickness = BED_COATING_THICKNESS);
 	
   //
   // Endstop Adjustments

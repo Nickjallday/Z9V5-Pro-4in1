@@ -72,9 +72,9 @@
 #endif
 
 #if HAS_DWIN_LCD
-  #include "lcd/dwin/e3v2/dwin.h"
-  #include "lcd/dwin/dwin_lcd.h"
-  #include "lcd/dwin/e3v2/rotary_encoder.h"
+  #include "lcd/dwin/dwin_ui/dwin.h"
+  #include "lcd/dwin/DWIN_LCD.h"
+  #include "lcd/dwin/dwin_ui/rotary_encoder.h"
 #endif
 
 #if ENABLED(IIC_BL24CXX_EEPROM)
@@ -389,12 +389,12 @@ void WIFI_onoff(void) {
 	OUT_WRITE(WIFI_RST,LOW);
 	delay(10);
 	OUT_WRITE(WIFI_RST,HIGH);
-	delay(10);		
+	delay(10);
 	if(WiFi_Enabled){
 		WiFi_Connected_fail = false;
 		OUT_WRITE(WIFI_EN,HIGH);
 	}
-	else{		
+	else{
 		OUT_WRITE(WIFI_EN,LOW);		
 	}
 	delay(10);
@@ -469,35 +469,35 @@ void startOrResumeJob() {
 }
 
 #if ENABLED(SDSUPPORT)
+inline void abortSDPrinting() {
+  card.endFilePrint(TERN_(SD_RESORT, true));
+  queue.clear();
+  quickstop_stepper();
+  print_job_timer.stop();
+  #if DISABLED(SD_ABORT_NO_COOLDOWN)
+    thermalManager.disable_all_heaters();
+  #endif
+  #if !HAS_CUTTER
+    thermalManager.zero_fan_speeds();
+  #else
+    cutter.kill();              // Full cutter shutdown including ISR control
+  #endif
+  wait_for_heatup = false;
+  TERN_(POWER_LOSS_RECOVERY, recovery.purge());
+  #ifdef EVENT_GCODE_SD_ABORT
+    queue.inject_P(PSTR(EVENT_GCODE_SD_ABORT));		
+	#endif
+	  TERN_(HAS_DWIN_LCD, DWIN_status = ID_SM_STOPED);	
+  TERN_(PASSWORD_AFTER_SD_PRINT_ABORT, password.lock_machine());
+}
 
-  inline void abortSDPrinting() {
-    card.endFilePrint(TERN_(SD_RESORT, true));
-    queue.clear();
-    quickstop_stepper();
-    print_job_timer.stop();
-    #if DISABLED(SD_ABORT_NO_COOLDOWN)
-      thermalManager.disable_all_heaters();
-    #endif
-    #if !HAS_CUTTER
-      thermalManager.zero_fan_speeds();
-    #else
-      cutter.kill();              // Full cutter shutdown including ISR control
-    #endif
-    wait_for_heatup = false;
-    TERN_(POWER_LOSS_RECOVERY, recovery.purge());
-    #ifdef EVENT_GCODE_SD_ABORT
-      queue.inject_P(PSTR(EVENT_GCODE_SD_ABORT));
-    #endif
-
-    TERN_(PASSWORD_AFTER_SD_PRINT_ABORT, password.lock_machine());
+inline void finishSDPrinting() {
+  if (queue.enqueue_one_P(PSTR("M1001"))) {
+    marlin_state = MF_RUNNING;
+    TERN_(PASSWORD_AFTER_SD_PRINT_END, password.lock_machine());
+		TERN_(HAS_DWIN_LCD, DWIN_Draw_PrintDone_Confirm());			
   }
-
-  inline void finishSDPrinting() {
-    if (queue.enqueue_one_P(PSTR("M1001"))) {
-      marlin_state = MF_RUNNING;
-      TERN_(PASSWORD_AFTER_SD_PRINT_END, password.lock_machine());
-    }
-  }
+}
 
 #endif // SDSUPPORT
 
@@ -743,7 +743,7 @@ void idle(TERN_(ADVANCED_PAUSE_FEATURE, bool no_stepper_sleep/*=false*/)) {
 
   // Handle Power-Loss Recovery
   #if ENABLED(POWER_LOSS_RECOVERY) && PIN_EXISTS(POWER_LOSS)
-    if (printJobOngoing()) recovery.outage();
+    if(printJobOngoing()) recovery.outage();
   #endif
 
   // Run StallGuard endstop checks
@@ -1004,7 +1004,7 @@ void setup() {
 		#if(WIFI_SERIAL_PORT == 2)
 		Uart2_Remap_Enabled();
 		#endif
-		WIFI_SERIAL.begin(BAUDRATE);
+		WIFI_SERIAL.begin(WIFI_BAUDRATE);
 	  serial_connect_timeout = millis() + 1000UL;
 	  while (/*!WIFI_SERIAL && */PENDING(millis(), serial_connect_timeout)) { /*nada*/ }
   #elif BOTH(HAS_TFT_LVGL_UI, USE_WIFI_FUNCTION)
@@ -1117,9 +1117,9 @@ void setup() {
   #if HAS_DWIN_LCD
     delay(800);   // Required delay (since boot?)
     SERIAL_ECHOPGM("\nDWIN handshake ");
-    if (DWIN_Handshake()) SERIAL_ECHOLNPGM("ok."); else SERIAL_ECHOLNPGM("error.");
-    DWIN_Frame_SetDir(1); // Orientation 90°
-    DWIN_UpdateLCD();     // Show bootscreen (first image)
+    if (dwinLCD.Handshake()) SERIAL_ECHOLNPGM("ok."); else SERIAL_ECHOLNPGM("error.");
+    dwinLCD.Frame_SetDir(1); // Orientation 90°
+    dwinLCD.UpdateLCD();     // Show bootscreen (first image)
   #else
     SETUP_RUN(ui.init());
     #if HAS_WIRED_LCD && ENABLED(SHOW_BOOTSCREEN)
@@ -1306,10 +1306,9 @@ void setup() {
     SERIAL_ECHO_TERNARY(err, "BL24CXX Check ", "failed", "succeeded", "!\n");
   #endif
 
-  #if HAS_DWIN_LCD
-    Encoder_Configuration();
+  #if HAS_DWIN_LCD    
     HMI_Init();
-	HMI_StartFrame(true);
+		
   #endif
 
   #if HAS_SERVICE_INTERVALS && DISABLED(HAS_DWIN_LCD)
@@ -1331,17 +1330,10 @@ void setup() {
     SETUP_RUN(tft_lvgl_init());
   #endif
 
-  #if ENABLED(PASSWORD_ON_STARTUP)
-    SETUP_RUN(password.lock_machine());      // Will not proceed until correct password provided
-  #endif
+  TERN_(PASSWORD_ON_STARTUP,SETUP_RUN(password.lock_machine()));
+  TERN_(OPTION_WIFI_MODULE,	SETUP_RUN(WIFI_onoff()));
+  TERN_(OPTION_REPEAT_PRINTING,	SETUP_RUN(ReprintManager.Init()));
 
-  #if ENABLED(OPTION_WIFI_MODULE)
-  	SETUP_RUN(WIFI_onoff());
-  #endif
-
-  #if ENABLED(OPTION_REPEAT_PRINTING)
-  	SETUP_RUN(ReprintManager.Init());
-  #endif
   marlin_state = MF_RUNNING;
 
   SETUP_LOG("setup() completed.");
@@ -1375,6 +1367,8 @@ void loop() {
     endstops.event_handler();
 
     TERN_(HAS_TFT_LVGL_UI, printer_state_polling());
+
+		TERN_(OPTION_REPEAT_PRINTING, ReprintManager.Check_Reprint_HOME());
 	
-  } while (ENABLED(__AVR__)); // Loop forever on slower (AVR) boards
+  } while(ENABLED(__AVR__)); // Loop forever on slower (AVR) boards
 }

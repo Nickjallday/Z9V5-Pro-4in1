@@ -33,8 +33,10 @@
 #include "../module/stepper/indirection.h"
 #include "../MarlinCore.h"
 
+
 #if HAS_DWIN_LCD
-  #include "../lcd/dwin/e3v2/dwin.h"
+#include "../lcd/dwin/dwin_lcd.h"
+#include "../lcd/dwin/dwin_ui/dwin.h"
 #endif
 
 
@@ -70,6 +72,17 @@ bool RePrint::Check_ENDSTOP() {
 	return false;
 }
 
+RePrint::Check_Reprint_HOME(){ 
+	if(ReprintManager.Is_Reprint_Reset){
+		if(ReprintManager.Check_ENDSTOP()){
+				ReprintManager.Back_Move_Start();
+		  ReprintManager.Is_Reprint_Reset = 0;
+				ReprintManager.Reprint_Reset_Enabled = 1;
+	 		ReprintManager.Reprint_Wait_Enabled = 0;
+	 		ReprintManager.tempbed_counter = 0;
+		}
+	}
+}
 
 bool RePrint::Reprint_BTemp_Check() {
   if((reprt_timer - millis())/100 > CHECK_TEMP_PER_TIMER){
@@ -137,13 +150,13 @@ bool RePrint::Repeat_Print_Process(RePrint_state_t state) {
 		else {
 			#if HAS_DWIN_LCD
 			const time_lapse = (reprt_timer - millis())/1000;
-			DWIN_Draw_Rectangle(1, Color_Bg_Window, 14, 120, 258, 160);
+			dwinLCD.Draw_Rectangle(1, Color_Bg_Window, 14, 120, 258, 160);
 			if(time_lapse >= 100) 
-				DWIN_Draw_IntValue(true, true, 0, font20x40, Color_White, Color_Bg_Window, 3, 106, 120, time_lapse);
+				dwinLCD.Draw_IntValue(true, true, 0, font20x40, Color_White, Color_Bg_Window, 3, 106, 120, time_lapse);
 			else if(time_lapse >= 10) 
-				DWIN_Draw_IntValue(true, true, 0, font20x40, Color_White, Color_Bg_Window, 2, 116, 120, time_lapse);
+				dwinLCD.Draw_IntValue(true, true, 0, font20x40, Color_White, Color_Bg_Window, 2, 116, 120, time_lapse);
 			else if(time_lapse < 10) 
-				DWIN_Draw_IntValue(true, true, 0, font20x40, Color_White, Color_Bg_Window, 1, 126, 120, time_lapse);
+				dwinLCD.Draw_IntValue(true, true, 0, font20x40, Color_White, Color_Bg_Window, 1, 126, 120, time_lapse);
 			#endif
 		}
 		break;
@@ -174,4 +187,50 @@ bool RePrint::Repeat_Print_Process(RePrint_state_t state) {
   return RPrint_Fg;
 }
 
+
+_emReprint_state RePrint::Reprint_check_state(){
+ if(Reprint_Reset_Enabled){
+	 if(Forward_Move_Process(2)){
+			 Reprint_Reset_Enabled = false;
+			 Reprint_Wait_Enabled = true;
+			 tempbed_counter = 0;
+			 Forward_Move_Start();  
+	 }
+	 else Back_Move_Start();
+ }
+
+ if(Reprint_Wait_Enabled){
+	 if(Forward_Move_Process(4)){
+			 Reprint_Wait_Enabled = false;  
+			 tempbed_counter = 0;
+			 Reprint_over = true;
+			 Back_Move_Stop();
+	 }
+	 else Forward_Move_Start();
+ }
+ 
+ if(Is_Reprint_Print && enabled){
+	 if(Repeat_Print_Process()){
+		 Is_Reprint_Print = false;
+		 reprt_state = REPRINT_INIT;
+		 if(Reprint_times <= 0) {
+			 enabled = false;			 
+			 return REPRINT_FINISHED;			 
+		 }		 
+		 return REPRINT_NEXT;		 
+	 }
+ }
+ return REPRINT_GOON;
+} 
+
+RePrint::Reprint_Stop(){
+	Is_Reprint_Print = false;
+	reprt_state = REPRINT_INIT;
+}
+
+RePrint::Reprint_goon(){
+	Reprint_times--;						
+	Is_Reprint_Print = true;
+	reprt_state = REPRINT_INIT;	
+}
 #endif // REPEAT_PRINTING_CONTROL

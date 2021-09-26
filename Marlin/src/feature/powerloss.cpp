@@ -41,7 +41,7 @@ uint32_t PrintJobRecovery::cmd_sdpos, // = 0
          PrintJobRecovery::sdpos[BUFSIZE];
 
 #if HAS_DWIN_LCD
-  #include "../lcd/dwin/e3v2/dwin.h"
+  #include "../lcd/dwin/dwin_ui/dwin.h"
   bool PrintJobRecovery::dwin_flag; // = false
 #endif
 
@@ -110,7 +110,7 @@ void PrintJobRecovery::changed() {
  * If a saved state exists send 'M1000 S' to initiate job recovery.
  */
 void PrintJobRecovery::check() {
-  //if (!card.isMounted()) card.mount();
+  if (!card.isMounted()) card.mount();
   if (card.isMounted() && recovery.enabled) {
     load();
     if (!valid()) return cancel();
@@ -159,6 +159,8 @@ void PrintJobRecovery::save(const bool force/*=false*/, const float zraise/*=0*/
   #ifndef POWER_LOSS_MIN_Z_CHANGE
     #define POWER_LOSS_MIN_Z_CHANGE 0.05  // Vase-mode-friendly out of the box
   #endif
+
+	if(!recovery.enabled) return;
 
   // Did Z change since the last call?
   if (force
@@ -235,7 +237,7 @@ void PrintJobRecovery::save(const bool force/*=false*/, const float zraise/*=0*/
     info.flag.allow_cold_extrusion = TERN0(PREVENT_COLD_EXTRUSION, thermalManager.allow_cold_extrude);
 	
 #if HAS_DWIN_LCD
-#if ENABLED(MIXING_EXTRUDER)
+	#if ENABLED(MIXING_EXTRUDER)
 		info.mixer_model = MixerCfg.Mixer_Mode_Rg;
 		mixer.selected_vtool = MixerCfg.Vtool_Backup;
 		info.mixer_current_vtool = mixer.selected_vtool;
@@ -248,12 +250,14 @@ void PrintJobRecovery::save(const bool force/*=false*/, const float zraise/*=0*/
 		info.mixer_current_auto_zpos[ZPOS_END] = mixer.gradient.end_z;
 		info.mixer_current_auto_vtool[VTOOL_START] = mixer.gradient.start_vtool;
 		info.mixer_current_auto_vtool[VTOOL_END] = mixer.gradient.end_vtool;
-#endif
-	if (HMI_flag.pause_flag) 
+	#endif
+	if(DWIN_status == ID_SM_PAUSED){
 		info.current_print_flag = 1;
+		info.current_Pause_Zpos_Buff = HMI_flag.pause_zpos_backup;
+	}
 	else 
 		info.current_print_flag = 0;
-	info.current_Pause_Zpos_Buff = HMI_flag.pause_zpos_backup;
+		
 #endif
 
   #if HAS_LCD_MENU
@@ -401,8 +405,8 @@ void PrintJobRecovery::resume() {
   	}
 	
   	MIXER_STEPPER_LOOP(i) mixer.mix[i] = info.mixer_current_percent[i];
-  	Refresh_Percent_display();
-  	Draw_Print_ProgressModel();
+  	//Refresh_Percent_display();
+  	//Draw_Print_ProgressMixModel();
   #endif
 
   #if HAS_HEATED_BED 

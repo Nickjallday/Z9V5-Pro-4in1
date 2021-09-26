@@ -74,7 +74,7 @@ void printer_state_polling() {
         uiCfg.current_e_position_bak = current_position.e;
 
         // #if ENABLED(POWER_LOSS_RECOVERY)
-        //  if (recovery.enabled) recovery.save(true);
+        //  recovery.save(true);
         // #endif
         gCfgItems.pause_reprint = 1;
         update_spi_flash();

@@ -28,68 +28,62 @@
  * @brief    DWIN screen control functions
  ********************************************************************************/
 
-#include "../../inc/MarlinConfigPre.h"
+#include "../../inc/MarlinConfig.h"
 
 #if HAS_DWIN_LCD
-
-#include "../../inc/MarlinConfig.h"
-#include "e3v2/dwin.h"
+#include "dwin_ui/dwin.h"
 #include "dwin_lcd.h"
 #include <string.h> // for memset
 
-//#define DEBUG_OUT 1
-#include "../../core/debug_out.h"
+DWINLCD dwinLCD;
 
-// Make sure DWIN_SendBuf is large enough to hold the largest string plus draw command and tail.
-// Assume the narrowest (6 pixel) font and 2-byte gb2312-encoded characters.
-uint8_t DWIN_SendBuf[11 + DWIN_WIDTH / 6 * 2] = { 0xAA };
+uint8_t DWIN_SendBuf[100] = { 0xAA };
 uint8_t DWIN_BufTail[4] = { 0xCC, 0x33, 0xC3, 0x3C };
 uint8_t databuf[26] = { 0 };
 uint8_t receivedType;
+short recnum = 0;
 
-int recnum = 0;
-
-inline void DWIN_Byte(size_t &i, const uint16_t bval) {
-  DWIN_SendBuf[++i] = bval;
+FORCE_INLINE static void DWIN_Byte(size_t &i, const uint16_t bval) {
+	DWIN_SendBuf[++i] = bval;
 }
 
-inline void DWIN_Word(size_t &i, const uint16_t wval) {
-  DWIN_SendBuf[++i] = wval >> 8;
-  DWIN_SendBuf[++i] = wval & 0xFF;
+FORCE_INLINE static void DWIN_Word(size_t &i, const uint16_t wval) {
+	DWIN_SendBuf[++i] = wval >> 8;
+	DWIN_SendBuf[++i] = wval & 0xFF;
 }
 
-inline void DWIN_Long(size_t &i, const uint32_t lval) {
-  DWIN_SendBuf[++i] = (lval >> 24) & 0xFF;
-  DWIN_SendBuf[++i] = (lval >> 16) & 0xFF;
-  DWIN_SendBuf[++i] = (lval >>  8) & 0xFF;
-  DWIN_SendBuf[++i] = lval & 0xFF;
+FORCE_INLINE static void DWIN_Long(size_t &i, const uint32_t lval) {
+	DWIN_SendBuf[++i] = (lval >> 24) & 0xFF;
+	DWIN_SendBuf[++i] = (lval >> 16) & 0xFF;
+	DWIN_SendBuf[++i] = (lval >>	8) & 0xFF;
+	DWIN_SendBuf[++i] = lval & 0xFF;
 }
 
-inline void DWIN_String(size_t &i, char * const string) {
-  const size_t len = _MIN(sizeof(DWIN_SendBuf) - i, strlen(string));
-  memcpy(&DWIN_SendBuf[i+1], string, len);
-  i += len;
+FORCE_INLINE static void DWIN_String(size_t &i, char * const string) {
+	const size_t len = _MIN(sizeof(DWIN_SendBuf) - i, strlen(string));
+	memcpy(&DWIN_SendBuf[i+1], string, len);
+	i += len;
 }
 
-inline void DWIN_String(size_t &i, const __FlashStringHelper * string) {
-  if (!string) return;
-  const size_t len = strlen_P((PGM_P)string); // cast it to PGM_P, which is basically const char *, and measure it using the _P version of strlen.
-  if (len == 0) return;
-  memcpy(&DWIN_SendBuf[i+1], string, len);
-  i += len;
+FORCE_INLINE static void DWIN_String(size_t &i, const __FlashStringHelper * string) {
+	if (!string) return;
+	const size_t len = strlen_P((PGM_P)string); // cast it to PGM_P, which is basically const char *, and measure it using the _P version of strlen.
+	if (len == 0) return;
+	memcpy(&DWIN_SendBuf[i+1], string, len);
+	i += len;
 }
 
 // Send the data in the buffer and the packet end
-inline void DWIN_Send(size_t &i) {
-  ++i;
-  LOOP_L_N(n, i) { LCD_SERIAL.write(DWIN_SendBuf[n]); delayMicroseconds(1); }
-  LOOP_L_N(n, 4) { LCD_SERIAL.write(DWIN_BufTail[n]); delayMicroseconds(1); }
+FORCE_INLINE static void DWIN_Send(size_t &i) {
+	++i;
+	LOOP_L_N(n, i) { LCD_SERIAL.write(DWIN_SendBuf[n]); delayMicroseconds(1); }
+	LOOP_L_N(n, 4) { LCD_SERIAL.write(DWIN_BufTail[n]); delayMicroseconds(1); }
 }
 
 /*-------------------------------------- System variable function --------------------------------------*/
 
 // Handshake (1: Success, 0: Fail)
-bool DWIN_Handshake(void) {
+bool DWINLCD::Handshake(void) {
   size_t i = 0;
   DWIN_Byte(i, 0x00);
   DWIN_Send(i);
@@ -117,7 +111,7 @@ bool DWIN_Handshake(void) {
 
 // Set the backlight luminance
 //  luminance: (0x00-0xFF)
-void DWIN_Backlight_SetLuminance(const uint8_t luminance) {
+void DWINLCD::Set_Backlight_Luminance(const uint8_t luminance) {
   size_t i = 0;
   DWIN_Byte(i, 0x30);
   DWIN_Byte(i, _MAX(luminance, 0x1F));
@@ -126,7 +120,7 @@ void DWIN_Backlight_SetLuminance(const uint8_t luminance) {
 
 // Set screen display direction
 //  dir: 0=0°, 1=90°, 2=180°, 3=270°
-void DWIN_Frame_SetDir(uint8_t dir) {
+void DWINLCD::Frame_SetDir(uint8_t dir) {
   size_t i = 0;
   DWIN_Byte(i, 0x34);
   DWIN_Byte(i, 0x5A);
@@ -136,7 +130,7 @@ void DWIN_Frame_SetDir(uint8_t dir) {
 }
 
 // Update display
-void DWIN_UpdateLCD(void) {
+void DWINLCD::UpdateLCD(void) {
   size_t i = 0;
   DWIN_Byte(i, 0x3D);
   DWIN_Send(i);
@@ -146,7 +140,7 @@ void DWIN_UpdateLCD(void) {
 
 // Clear screen
 //  color: Clear screen color
-void DWIN_Frame_Clear(const uint16_t color) {
+void DWINLCD::Frame_Clear(const uint16_t color) {
   size_t i = 0;
   DWIN_Byte(i, 0x01);
   DWIN_Word(i, color);
@@ -157,7 +151,7 @@ void DWIN_Frame_Clear(const uint16_t color) {
 //  width: point width   0x01-0x0F
 //  height: point height 0x01-0x0F
 //  x,y: upper left point
-void DWIN_Draw_Point(uint8_t width, uint8_t height, uint16_t x, uint16_t y) {
+void DWINLCD::Draw_Point(uint8_t width, uint8_t height, uint16_t x, uint16_t y) {
   size_t i = 0;
   DWIN_Byte(i, 0x02);
   DWIN_Byte(i, width);
@@ -171,7 +165,7 @@ void DWIN_Draw_Point(uint8_t width, uint8_t height, uint16_t x, uint16_t y) {
 //  color: Line segment color
 //  xStart/yStart: Start point
 //  xEnd/yEnd: End point
-void DWIN_Draw_Line(uint16_t color, uint16_t xStart, uint16_t yStart, uint16_t xEnd, uint16_t yEnd) {
+void DWINLCD::Draw_Line(uint16_t color, uint16_t xStart, uint16_t yStart, uint16_t xEnd, uint16_t yEnd) {
   size_t i = 0;
   DWIN_Byte(i, 0x03);
   DWIN_Word(i, color);
@@ -187,7 +181,7 @@ void DWIN_Draw_Line(uint16_t color, uint16_t xStart, uint16_t yStart, uint16_t x
 //  color: Rectangle color
 //  xStart/yStart: upper left point
 //  xEnd/yEnd: lower right point
-void DWIN_Draw_Rectangle(uint8_t mode, uint16_t color,
+void DWINLCD::Draw_Rectangle(uint8_t mode, uint16_t color,
                          uint16_t xStart, uint16_t yStart, uint16_t xEnd, uint16_t yEnd) {
   size_t i = 0;
   DWIN_Byte(i, 0x05);
@@ -207,7 +201,7 @@ void DWIN_Draw_Rectangle(uint8_t mode, uint16_t color,
 //  color: Fill color
 //  xStart/yStart: upper left point
 //  xEnd/yEnd: bottom right point
-void DWIN_Frame_AreaMove(uint8_t mode, uint8_t dir, uint16_t dis,
+void DWINLCD::Frame_AreaMove(uint8_t mode, uint8_t dir, uint16_t dis,
                          uint16_t color, uint16_t xStart, uint16_t yStart, uint16_t xEnd, uint16_t yEnd) {
   size_t i = 0;
   DWIN_Byte(i, 0x09);
@@ -231,7 +225,7 @@ void DWIN_Frame_AreaMove(uint8_t mode, uint8_t dir, uint16_t dis,
 //  bColor: Background color
 //  x/y: Upper-left coordinate of the string
 //  *string: The string
-void DWIN_Draw_String(bool widthAdjust, bool bShow, uint8_t size,
+void DWINLCD::Draw_String(bool widthAdjust, bool bShow, uint8_t size,
                       uint16_t color, uint16_t bColor, uint16_t x, uint16_t y, char *string) {
   size_t i = 0;
   DWIN_Byte(i, 0x11);
@@ -258,7 +252,7 @@ void DWIN_Draw_String(bool widthAdjust, bool bShow, uint8_t size,
 //  iNum: Number of digits
 //  x/y: Upper-left coordinate
 //  value: Integer value
-void DWIN_Draw_IntValue(uint8_t bShow, bool zeroFill, uint8_t zeroMode, uint8_t size, uint16_t color,
+void DWINLCD::Draw_IntValue(uint8_t bShow, bool zeroFill, uint8_t zeroMode, uint8_t size, uint16_t color,
                           uint16_t bColor, uint8_t iNum, uint16_t x, uint16_t y, uint16_t value) {
   size_t i = 0;
   DWIN_Byte(i, 0x14);
@@ -304,9 +298,8 @@ void DWIN_Draw_IntValue(uint8_t bShow, bool zeroFill, uint8_t zeroMode, uint8_t 
 //  fNum: Number of decimal digits
 //  x/y: Upper-left point
 //  value: Float value
-void DWIN_Draw_FloatValue(uint8_t bShow, bool zeroFill, uint8_t zeroMode, uint8_t size, uint16_t color,
+void DWINLCD::Draw_FloatValue(uint8_t bShow, bool zeroFill, uint8_t zeroMode, uint8_t size, uint16_t color,
                             uint16_t bColor, uint8_t iNum, uint8_t fNum, uint16_t x, uint16_t y, long value) {
-  //uint8_t *fvalue = (uint8_t*)&value;
   size_t i = 0;
   DWIN_Byte(i, 0x14);
   DWIN_Byte(i, (bShow * 0x80) | (zeroFill * 0x20) | (zeroMode * 0x10) | size);
@@ -317,37 +310,29 @@ void DWIN_Draw_FloatValue(uint8_t bShow, bool zeroFill, uint8_t zeroMode, uint8_
   DWIN_Word(i, x);
   DWIN_Word(i, y);
   DWIN_Long(i, value);
-  /*
-  DWIN_Byte(i, fvalue[3]);
-  DWIN_Byte(i, fvalue[2]);
-  DWIN_Byte(i, fvalue[1]);
-  DWIN_Byte(i, fvalue[0]);
-  */
   DWIN_Send(i);
 }
 
-void DWIN_Draw_FloatValue_new(uint8_t bShow, bool zeroFill, uint8_t zeroMode, uint8_t size, uint16_t color,
-                            uint16_t bColor, uint8_t iNum, uint8_t fNum, uint16_t x, uint16_t y, float fvalue) {
-
-	uint16_t lvalue = fvalue*(10^fNum);
-	if(fvalue < 0){
-		lvalue = -lvalue;
-		DWIN_Draw_String(false,bShow,size,color,bColor,x,y,F("-"));
-		if(size <= 5) 
-			x += 6 + size*2;
-		else if(size <= 9) 
-			x += 6 + size*4;
-		else
-			return;
-	}	
-	DWIN_Draw_FloatValue(bShow,zeroFill,zeroMode,size,color,bColor,iNum,fNum,x,y,lvalue);  
+void DWINLCD::Draw_SignedFloatValue(uint8_t size, uint16_t Color, uint16_t bColor, uint8_t iNum, uint8_t fNum, uint16_t x, uint16_t y, long value) {			
+	uint8_t w = 6;
+	if(size <= 5) 
+		w = 6 + size*2;
+	else if(size <= 9) 
+		w = 6 + size*4;
+	if (value < 0) {
+		Draw_String(true, true, size, Color, bColor, x, y, F("-"));
+		Draw_FloatValue(true, true, 0, size, Color, bColor, iNum, fNum, x+w, y, -value);
+	}
+	else {
+		Draw_String(true, true, size, Color, bColor, x, y, F(" "));
+		Draw_FloatValue(true, true, 0, size, Color, bColor, iNum, fNum, x+w, y, value);
+	}
 }
-
 /*---------------------------------------- Picture related functions ----------------------------------------*/
 
 // Draw JPG and cached in #0 virtual display area
 // id: Picture ID
-void DWIN_JPG_ShowAndCache(const uint8_t id) {
+void DWINLCD::JPG_ShowAndCache(const uint8_t id) {
   size_t i = 0;
   DWIN_Word(i, 0x2200);
   DWIN_Byte(i, id);
@@ -358,7 +343,7 @@ void DWIN_JPG_ShowAndCache(const uint8_t id) {
 //  libID: Icon library ID
 //  picID: Icon ID
 //  x/y: Upper-left point
-void DWIN_ICON_Show(uint8_t libID, uint8_t picID, uint16_t x, uint16_t y) {
+void DWINLCD::ICON_Show(uint8_t libID, uint8_t picID, uint16_t x, uint16_t y) {
   NOMORE(x, DWIN_WIDTH - 1);
   NOMORE(y, DWIN_HEIGHT - 1); // -- ozy -- srl
   size_t i = 0;
@@ -373,7 +358,7 @@ void DWIN_ICON_Show(uint8_t libID, uint8_t picID, uint16_t x, uint16_t y) {
 // Unzip the JPG picture to a virtual display area
 //  n: Cache index
 //  id: Picture ID
-void DWIN_JPG_CacheToN(uint8_t n, uint8_t id) {
+void DWINLCD::JPG_CacheToN(uint8_t n, uint8_t id) {
   size_t i = 0;
   DWIN_Byte(i, 0x25);
   DWIN_Byte(i, n);
@@ -386,7 +371,7 @@ void DWIN_JPG_CacheToN(uint8_t n, uint8_t id) {
 //  xStart/yStart: Upper-left of virtual area
 //  xEnd/yEnd: Lower-right of virtual area
 //  x/y: Screen paste point
-void DWIN_Frame_AreaCopy(uint8_t cacheID, uint16_t xStart, uint16_t yStart,
+void DWINLCD::Frame_AreaCopy(uint8_t cacheID, uint16_t xStart, uint16_t yStart,
                          uint16_t xEnd, uint16_t yEnd, uint16_t x, uint16_t y) {
   size_t i = 0;
   DWIN_Byte(i, 0x27);
@@ -406,10 +391,9 @@ void DWIN_Frame_AreaCopy(uint8_t cacheID, uint16_t xStart, uint16_t yStart,
 //  xStart/yStart: Upper-left of virtual area
 //  xEnd/yEnd: Lower-right of virtual area
 //  x/y: Screen paste point
-//void DWIN_Frame_AreaCopy_Index(uint8_t        PixtureID, uint8_t cacheID, uint16_t xStart, uint16_t yStart,
+//void Frame_AreaCopy_Index(uint8_t PixtureID, uint8_t cacheID, uint16_t xStart, uint16_t yStart,
                          //uint16_t xEnd, uint16_t yEnd, uint16_t x, uint16_t y) {
-void DWIN_Frame_AreaCopy_Index(uint8_t cacheID, uint8_t 	    PixtureID,  uint8_t ItemID, uint16_t array[Lang_Number][Item_Number][4],uint16_t x,uint16_t y) {
-                      
+void DWINLCD::Frame_AreaCopy_Index(uint8_t cacheID, uint8_t PixtureID,  uint8_t ItemID, uint16_t array[LANG_NUMBER][ICON_ITEM_NUMBER][4],uint16_t x,uint16_t y) {
   size_t i = 0;
   DWIN_Byte(i, 0x27);
   DWIN_Byte(i, 0x80 | cacheID);
@@ -430,7 +414,7 @@ void DWIN_Frame_AreaCopy_Index(uint8_t cacheID, uint8_t 	    PixtureID,  uint8_t
 //  picIDe: Icon ending ID
 //  x/y: Upper-left point
 //  interval: Display time interval, unit 10mS
-void DWIN_ICON_Animation(uint8_t animID, bool animate, uint8_t libID, uint8_t picIDs, uint8_t picIDe, uint16_t x, uint16_t y, uint16_t interval) {
+void DWINLCD::ICON_Animation(uint8_t animID, bool animate, uint8_t libID, uint8_t picIDs, uint8_t picIDe, uint16_t x, uint16_t y, uint16_t interval) {
   NOMORE(x, DWIN_WIDTH - 1);
   NOMORE(y, DWIN_HEIGHT - 1); // -- ozy -- srl
   size_t i = 0;
@@ -451,7 +435,7 @@ void DWIN_ICON_Animation(uint8_t animID, bool animate, uint8_t libID, uint8_t pi
 
 // Animation Control
 //  state: 16 bits, each bit is the state of an animation id
-void DWIN_ICON_AnimationControl(uint16_t state) {
+void DWINLCD::ICON_AnimationControl(uint16_t state) {
   size_t i = 0;
   DWIN_Byte(i, 0x28);
   DWIN_Word(i, state);

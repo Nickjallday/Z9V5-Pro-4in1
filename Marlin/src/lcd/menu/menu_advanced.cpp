@@ -543,7 +543,7 @@ void menu_advanced_settings() {
     #endif
 
 		#if ENABLED(OPTION_BED_COATING)
-		EDIT_ITEM(float42_52, MSG_COATING_THICKNESS, &coating_thickness, -1.0f, 10.0f);
+		EDIT_ITEM(float42_52, MSG_COATING_THICKNESS, &coating_thickness, -5.0f, 10.0f);
 		#endif
 
     // M203 / M205 - Feedrate items

@@ -32,7 +32,7 @@
 #include "../lcd/ultralcd.h"
 
 #if HAS_DWIN_LCD
-  #include "../lcd/dwin/e3v2/dwin.h"
+  #include "../lcd/dwin/dwin_ui/dwin.h"
 #endif
 
 #include "../module/planner.h"        // for synchronize
@@ -396,7 +396,7 @@ void CardReader::mount() {
       ui.set_status_P(GET_TEXT(MSG_SD_INIT_FAIL), -1);
   #endif
 
-  ui.refresh();
+  TERN_(HAS_LCD_MENU, ui.refresh());
 }
 
 /**
@@ -480,7 +480,6 @@ void CardReader::endFilePrint(TERN_(SD_RESORT, const bool re_sort/*=false*/)) {
   flag.sdprinting = flag.abort_sd_printing = false;
   if (isFileOpen()) file.close();
   TERN_(SD_RESORT, if (re_sort) presort());
-	TERN_(HAS_DWIN_LCD, HMI_flag.print_finish = true);	
 }
 
 void CardReader::openLogFile(char * const path) {
@@ -1190,35 +1189,34 @@ void CardReader::fileHasFinished() {
 
 #if ENABLED(POWER_LOSS_RECOVERY)
 
-  bool CardReader::jobRecoverFileExists() {
-    const bool exists = recovery.file.open(&root, recovery.filename, O_READ);
-    if (exists) recovery.file.close();
-    return exists;
-  }
+bool CardReader::jobRecoverFileExists() {
+  const bool exists = recovery.file.open(&root, recovery.filename, O_READ);
+  if (exists) recovery.file.close();
+  return exists;
+}
 
-  void CardReader::openJobRecoveryFile(const bool read) {
-    if (!isMounted()) return;
-    if (recovery.file.isOpen()) return;
-    if (!recovery.file.open(&root, recovery.filename, read ? O_READ : O_CREAT | O_WRITE | O_TRUNC | O_SYNC))
-      SERIAL_ECHOLNPAIR(STR_SD_OPEN_FILE_FAIL, recovery.filename, ".");
-    else if (!read)
-      echo_write_to_file(recovery.filename);
-  }
+void CardReader::openJobRecoveryFile(const bool read) {
+  if (!isMounted()) return;
+  if (recovery.file.isOpen()) return;
+  if (!recovery.file.open(&root, recovery.filename, read ? O_READ : O_CREAT | O_WRITE | O_TRUNC | O_SYNC))
+    SERIAL_ECHOLNPAIR(STR_SD_OPEN_FILE_FAIL, recovery.filename, ".");
+  else if (!read)
+    echo_write_to_file(recovery.filename);
+}
 
-  // Removing the job recovery file currently requires closing
-  // the file being printed, so during SD printing the file should
-  // be zeroed and written instead of deleted.
-  void CardReader::removeJobRecoveryFile() {
-    if (jobRecoverFileExists()) {
-      recovery.init();
-      removeFile(recovery.filename);
-      #if ENABLED(DEBUG_POWER_LOSS_RECOVERY)
-        SERIAL_ECHOPGM("Power-loss file delete");
-        serialprintPGM(jobRecoverFileExists() ? PSTR(" failed.\n") : PSTR("d.\n"));
-      #endif
-    }
+// Removing the job recovery file currently requires closing
+// the file being printed, so during SD printing the file should
+// be zeroed and written instead of deleted.
+void CardReader::removeJobRecoveryFile() {
+  if (jobRecoverFileExists()) {
+    recovery.init();
+    removeFile(recovery.filename);
+    #if ENABLED(DEBUG_POWER_LOSS_RECOVERY)
+      SERIAL_ECHOPGM("Power-loss file delete");
+      serialprintPGM(jobRecoverFileExists() ? PSTR(" failed.\n") : PSTR("d.\n"));
+    #endif
   }
-
+}
 #endif // POWER_LOSS_RECOVERY
 
 #endif // SDSUPPORT

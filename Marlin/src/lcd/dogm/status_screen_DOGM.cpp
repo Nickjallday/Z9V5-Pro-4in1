@@ -109,59 +109,59 @@
 
 #if HAS_POWER_MONITOR
 
-  void display_power_monitor(const uint8_t x, const uint8_t y) {
+void display_power_monitor(const uint8_t x, const uint8_t y) {
 
-    lcd_moveto(x, y);
+  lcd_moveto(x, y);
 
-    #if HAS_POWER_MONITOR_WATTS
-      const bool wflag = power_monitor.power_display_enabled();
-    #endif
+  #if HAS_POWER_MONITOR_WATTS
+    const bool wflag = power_monitor.power_display_enabled();
+  #endif
+  #if ENABLED(POWER_MONITOR_CURRENT)
+    const bool iflag = power_monitor.current_display_enabled();
+  #endif
+  #if HAS_POWER_MONITOR_VREF
+    const bool vflag = power_monitor.voltage_display_enabled();
+  #endif
+
+  #if HAS_POWER_MONITOR_WATTS
+    // Cycle between current, voltage, and power
+    if (ELAPSED(millis(), power_monitor.display_item_ms)) {
+      power_monitor.display_item_ms = millis() + 1000UL;
+      ++power_monitor.display_item;
+    }
+  #elif ENABLED(POWER_MONITOR_CURRENT)
+    power_monitor.display_item = 0;
+  #elif HAS_POWER_MONITOR_VREF
+    power_monitor.display_item = 1;
+  #endif
+
+  // ensure we have the right one selected for display
+  for (uint8_t i = 0; i < 3; i++) {
     #if ENABLED(POWER_MONITOR_CURRENT)
-      const bool iflag = power_monitor.current_display_enabled();
+      if (power_monitor.display_item == 0 && !iflag) ++power_monitor.display_item;
     #endif
     #if HAS_POWER_MONITOR_VREF
-      const bool vflag = power_monitor.voltage_display_enabled();
+      if (power_monitor.display_item == 1 && !vflag) ++power_monitor.display_item;
     #endif
-
     #if HAS_POWER_MONITOR_WATTS
-      // Cycle between current, voltage, and power
-      if (ELAPSED(millis(), power_monitor.display_item_ms)) {
-        power_monitor.display_item_ms = millis() + 1000UL;
-        ++power_monitor.display_item;
-      }
-    #elif ENABLED(POWER_MONITOR_CURRENT)
-      power_monitor.display_item = 0;
-    #elif HAS_POWER_MONITOR_VREF
-      power_monitor.display_item = 1;
+      if (power_monitor.display_item == 2 && !wflag) ++power_monitor.display_item;
     #endif
-
-    // ensure we have the right one selected for display
-    for (uint8_t i = 0; i < 3; i++) {
-      #if ENABLED(POWER_MONITOR_CURRENT)
-        if (power_monitor.display_item == 0 && !iflag) ++power_monitor.display_item;
-      #endif
-      #if HAS_POWER_MONITOR_VREF
-        if (power_monitor.display_item == 1 && !vflag) ++power_monitor.display_item;
-      #endif
-      #if HAS_POWER_MONITOR_WATTS
-        if (power_monitor.display_item == 2 && !wflag) ++power_monitor.display_item;
-      #endif
-      if (power_monitor.display_item >= 3) power_monitor.display_item = 0;
-    }
-
-    switch (power_monitor.display_item) {
-      #if ENABLED(POWER_MONITOR_CURRENT)                // Current
-        case 0: if (iflag) power_monitor.draw_current(); break;
-      #endif
-      #if HAS_POWER_MONITOR_VREF                        // Voltage
-        case 1: if (vflag) power_monitor.draw_voltage(); break;
-      #endif
-      #if HAS_POWER_MONITOR_WATTS                       // Power
-        case 2: if (wflag) power_monitor.draw_power(); break;
-      #endif
-      default: break;
-    }
+    if (power_monitor.display_item >= 3) power_monitor.display_item = 0;
   }
+
+  switch (power_monitor.display_item) {
+    #if ENABLED(POWER_MONITOR_CURRENT)                // Current
+      case 0: if (iflag) power_monitor.draw_current(); break;
+    #endif
+    #if HAS_POWER_MONITOR_VREF                        // Voltage
+      case 1: if (vflag) power_monitor.draw_voltage(); break;
+    #endif
+    #if HAS_POWER_MONITOR_WATTS                       // Power
+      case 2: if (wflag) power_monitor.draw_power(); break;
+    #endif
+    default: break;
+  }
+}
 #endif
 
 #define PROGRESS_BAR_X 54
@@ -401,73 +401,73 @@ FORCE_INLINE void _draw_mixetruder_status() {
 #if DO_DRAW_BED
 
   // Draw bed bitmap with current and target temperatures
-  FORCE_INLINE void _draw_bed_status(const bool blink) {
-    #if !HEATER_IDLE_HANDLER
-      UNUSED(blink);
-    #endif
+FORCE_INLINE void _draw_bed_status(const bool blink) {
+  #if !HEATER_IDLE_HANDLER
+    UNUSED(blink);
+  #endif
 
-    const uint8_t tx = STATUS_BED_TEXT_X;
+  const uint8_t tx = STATUS_BED_TEXT_X;
 
-    const float temp = thermalManager.degBed(),
-              target = thermalManager.degTargetBed();
+  const float temp = thermalManager.degBed(),
+            target = thermalManager.degTargetBed();
 
-    #if ENABLED(STATUS_HEAT_PERCENT) || DISABLED(STATUS_BED_ANIM)
-      const bool isHeat = BED_ALT();
-    #endif
+  #if ENABLED(STATUS_HEAT_PERCENT) || DISABLED(STATUS_BED_ANIM)
+    const bool isHeat = BED_ALT();
+  #endif
 
-    #if DISABLED(STATUS_BED_ANIM)
-      #define STATIC_BED    true
-      #define BED_DOT       isHeat
-    #else
-      #define STATIC_BED    false
-      #define BED_DOT       false
-    #endif
+  #if DISABLED(STATUS_BED_ANIM)
+    #define STATIC_BED    true
+    #define BED_DOT       isHeat
+  #else
+    #define STATIC_BED    false
+    #define BED_DOT       false
+  #endif
 
-    if (PAGE_CONTAINS(STATUS_HEATERS_Y, STATUS_HEATERS_BOT)) {
+  if (PAGE_CONTAINS(STATUS_HEATERS_Y, STATUS_HEATERS_BOT)) {
 
-      #define BAR_TALL (STATUS_HEATERS_HEIGHT - 2)
+    #define BAR_TALL (STATUS_HEATERS_HEIGHT - 2)
 
-      const float prop = target - 20,
-                  perc = prop > 0 && temp >= 20 ? (temp - 20) / prop : 0;
-      uint8_t tall = uint8_t(perc * BAR_TALL + 0.5f);
-      NOMORE(tall, BAR_TALL);
+    const float prop = target - 20,
+                perc = prop > 0 && temp >= 20 ? (temp - 20) / prop : 0;
+    uint8_t tall = uint8_t(perc * BAR_TALL + 0.5f);
+    NOMORE(tall, BAR_TALL);
 
-      // Draw a heating progress bar, if specified
-      #if ENABLED(STATUS_HEAT_PERCENT)
+    // Draw a heating progress bar, if specified
+    #if ENABLED(STATUS_HEAT_PERCENT)
 
-        if (isHeat) {
-          const uint8_t bx = STATUS_BED_X + STATUS_BED_WIDTH;
-          u8g.drawFrame(bx, STATUS_HEATERS_Y, 3, STATUS_HEATERS_HEIGHT);
-          if (tall) {
-            const uint8_t ph = STATUS_HEATERS_HEIGHT - 1 - tall;
-            if (PAGE_OVER(STATUS_HEATERS_Y + ph))
-              u8g.drawVLine(bx + 1, STATUS_HEATERS_Y + ph, tall);
-          }
+      if (isHeat) {
+        const uint8_t bx = STATUS_BED_X + STATUS_BED_WIDTH;
+        u8g.drawFrame(bx, STATUS_HEATERS_Y, 3, STATUS_HEATERS_HEIGHT);
+        if (tall) {
+          const uint8_t ph = STATUS_HEATERS_HEIGHT - 1 - tall;
+          if (PAGE_OVER(STATUS_HEATERS_Y + ph))
+            u8g.drawVLine(bx + 1, STATUS_HEATERS_Y + ph, tall);
         }
+      }
 
-      #endif
+    #endif
 
-    } // PAGE_CONTAINS
+  } // PAGE_CONTAINS
 
-    if (PAGE_UNDER(7)) {
-      #if HEATER_IDLE_HANDLER
-        const bool dodraw = (blink || !thermalManager.heater_idle[thermalManager.IDLE_INDEX_BED].timed_out);
-      #else
-        constexpr bool dodraw = true;
-      #endif
-      if (dodraw) _draw_centered_temp(target + 0.5, tx, 7);
-    }
-
-    if (PAGE_CONTAINS(28 - INFO_FONT_ASCENT, 28 - 1))
-      _draw_centered_temp(temp + 0.5f, tx, 28);
-
-    if (STATIC_BED && BED_DOT && PAGE_CONTAINS(17, 19)) {
-      u8g.setColorIndex(0); // set to white on black
-      u8g.drawBox(tx, 20 - 2, 2, 2);
-      u8g.setColorIndex(1); // restore black on white
-    }
-
+  if (PAGE_UNDER(7)) {
+    #if HEATER_IDLE_HANDLER
+      const bool dodraw = (blink || !thermalManager.heater_idle[thermalManager.IDLE_INDEX_BED].timed_out);
+    #else
+      constexpr bool dodraw = true;
+    #endif
+    if (dodraw) _draw_centered_temp(target + 0.5, tx, 7);
   }
+
+  if (PAGE_CONTAINS(28 - INFO_FONT_ASCENT, 28 - 1))
+    _draw_centered_temp(temp + 0.5f, tx, 28);
+
+  if (STATIC_BED && BED_DOT && PAGE_CONTAINS(17, 19)) {
+    u8g.setColorIndex(0); // set to white on black
+    u8g.drawBox(tx, 20 - 2, 2, 2);
+    u8g.setColorIndex(1); // restore black on white
+  }
+
+}
 
 #endif // DO_DRAW_BED
 

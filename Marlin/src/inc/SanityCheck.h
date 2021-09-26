@@ -78,8 +78,8 @@
 /**
  * Warnings for Option feature in configurations
  */
-#if BOTH(OPTION_PL08N, OPTION_3DTOUCH)
-	#error "Only Choose one in OPTION_PL08N and OPTION_3DTOUCH"
+#if BOTH(OPTION_ZLSENSOR, OPTION_3DTOUCH)
+	#error "Only Choose one in OPTION_ZLSENSOR and OPTION_3DTOUCH"
 #endif
 
 #if BOTH(OPTION_TITAN, OPTION_BGM)

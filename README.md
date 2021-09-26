@@ -1,3 +1,8 @@
+# Bin
+
+Download firmware.bin to SD card to flash directly.
+
+
 # Marlin 3D Printer Firmware
 
 ![GitHub](https://img.shields.io/github/license/marlinfirmware/marlin.svg)

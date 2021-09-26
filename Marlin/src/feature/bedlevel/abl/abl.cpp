@@ -336,14 +336,7 @@ float bilinear_z_offset(const xy_pos_t &raw) {
   }
   last_offset = offset;
   //*/
-	#if ENABLED(DEBUG_LEVELING_FEATURE)
-	SERIAL_ECHOLNPAIR("bilinear_start.x=", bilinear_start.x);
-	SERIAL_ECHOLNPAIR("bilinear_start.y=", bilinear_start.y);
-	SERIAL_ECHOLNPAIR("raw.x=", raw.x);
-	SERIAL_ECHOLNPAIR("raw.y=", raw.y);
-	SERIAL_ECHOLNPAIR("offset=", offset);
-	#endif
-	
+
   return offset;
 }
 

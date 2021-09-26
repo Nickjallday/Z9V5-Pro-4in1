@@ -37,7 +37,6 @@
 void GcodeSuite::M28() {
 
   #if ENABLED(BINARY_FILE_TRANSFER)
-
     bool binary_mode = false;
     char *p = parser.string_arg;
     if (p[0] == 'B' && NUMERIC(p[1])) {
@@ -45,7 +44,6 @@ void GcodeSuite::M28() {
       p += 2;
       while (*p == ' ') ++p;
     }
-
     // Binary transfer mode
     if ((card.flag.binary_mode = binary_mode)) {
       SERIAL_ECHO_MSG("Switching to Binary Protocol");

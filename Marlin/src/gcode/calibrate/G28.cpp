@@ -47,7 +47,7 @@
 
 #include "../../lcd/ultralcd.h"
 #if HAS_DWIN_LCD
-  #include "../../lcd/dwin/e3v2/dwin.h"
+  #include "../../lcd/dwin/dwin_ui/dwin.h"
 #endif
 
 #if HAS_L64XX                         // set L6470 absolute position registers to counts
@@ -369,8 +369,9 @@ void GcodeSuite::G28() {
 
       if (doZ) {
         TERN_(BLTOUCH, bltouch.init());
-
+				
 				TERN_(OPTION_PL08N, probe.stow());
+				TERN_(OPTION_ZLSENSOR, probe.stow());
 
         TERN(Z_SAFE_HOMING, home_z_safely(), homeaxis(Z_AXIS));
 
@@ -455,9 +456,9 @@ void GcodeSuite::G28() {
     #endif
   #endif
 
-  ui.refresh();
+  TERN_(HAS_LCD_MENU, ui.refresh());
 
-  TERN_(HAS_DWIN_LCD, DWIN_CompletedHoming());
+  TERN_(HAS_DWIN_LCD, DWIN_PopMenu_HomeDone());
 
   report_current_position();
 

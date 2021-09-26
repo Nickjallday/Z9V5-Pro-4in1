@@ -237,6 +237,7 @@ void menu_info_board() {
   void menu_info_printer() {
     if (ui.use_click()) return ui.go_back();
     START_SCREEN();
+		STATIC_ITEM_P(PSTR(MACHINE_NAME));                          // My3DPrinter
 		STATIC_ITEM_P(PSTR(FIRMWARE_VERSION));    
 		PSTRING_ITEM(MSG_INFO_EXTRUDERS, STRINGIFY(E_STEPPERS), SS_CENTER); // Extruders: x
     #if HAS_LEVELING
@@ -251,6 +252,8 @@ void menu_info_board() {
 	    STATIC_ITEM_P(PSTR("PL-08N SENSOR"));
       #elif ENABLED(OPTION_3DTOUCH)
 	    STATIC_ITEM_P(PSTR("3DTOUCH SENSOR"));
+			#elif ENABLED(OPTION_ZLSENSOR)
+	    STATIC_ITEM_P(PSTR("ZL SENSOR"));
       #endif
     #endif
 	
@@ -293,8 +296,7 @@ void menu_info_board() {
   #endif
 		STATIC_ITEM(MSG_MARLIN);              											// Marlin
     STATIC_ITEM_P(PSTR(SHORT_BUILD_VERSION));                   // x.x.x-Branch
-    STATIC_ITEM_P(PSTR(STRING_DISTRIBUTION_DATE));              // YYYY-MM-DD HH:MM
-    STATIC_ITEM_P(PSTR(MACHINE_NAME));                          // My3DPrinter
+    STATIC_ITEM_P(PSTR(STRING_DISTRIBUTION_DATE));              // YYYY-MM-DD HH:MM    
     STATIC_ITEM_P(PSTR(WEBSITE_URL));                           // www.my3dprinter.com
     END_SCREEN();
   }

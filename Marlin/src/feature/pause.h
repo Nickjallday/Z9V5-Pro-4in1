@@ -31,14 +31,8 @@ typedef struct {
 } fil_change_settings_t;
 
 #include "../inc/MarlinConfigPre.h"
-
 #if ENABLED(ADVANCED_PAUSE_FEATURE)
-
 #include "../libs/nozzle.h"
-
-#if HAS_DWIN_LCD
-  #include "../lcd/dwin/e3v2/dwin.h"
-#endif
 
 enum PauseMode : char {
   PAUSE_MODE_SAME,
@@ -59,7 +53,7 @@ enum PauseMessage : char {
   PAUSE_MESSAGE_OPTION,
   PAUSE_MESSAGE_RESUME,
   PAUSE_MESSAGE_STATUS,
-  PAUSE_MESSAGE_HEAT,
+  PAUSE_MESSAGE_HEAT = 10,
   PAUSE_MESSAGE_HEATING
 };
 
@@ -89,13 +83,6 @@ extern uint8_t did_pause_print;
   #define DXC_SAY
 #endif
 
-bool ensure_safe_temperature(const bool wait=true, 
-									#if HAS_DWIN_LCD
-										const DWINPauseMode mode=DWIN_PAUSE_MODE_SAME);
-									#else
-										const PauseMode mode=PAUSE_MODE_SAME);
-									#endif
-
 bool pause_print(const float &retract, const xyz_pos_t &park_point, const float &unload_length=0, const bool show_lcd=false DXC_PARAMS);
 
 void wait_for_confirmation(const bool is_reload=false, const int8_t max_beep_count=0 DXC_PARAMS);
@@ -103,20 +90,9 @@ void wait_for_confirmation(const bool is_reload=false, const int8_t max_beep_cou
 void resume_print(const float &slow_load_length=0, const float &fast_load_length=0, const float &extrude_length=ADVANCED_PAUSE_PURGE_LENGTH, const int8_t max_beep_count=0, int16_t targetTemp=0 DXC_PARAMS);
 
 bool load_filament(const float &slow_load_length=0, const float &fast_load_length=0, const float &extrude_length=0, const int8_t max_beep_count=0, const bool show_lcd=false,
-                          const bool pause_for_user=false, 
-                          #if HAS_DWIN_LCD
-                          	const DWINPauseMode mode=DWIN_PAUSE_MODE_PAUSE_PRINT DXC_PARAMS
-						  #else
-						  	const PauseMode mode=PAUSE_MODE_PAUSE_PRINT DXC_PARAMS
-						  #endif
-						  );
+                          const bool pause_for_user=false, const PauseMode mode=PAUSE_MODE_PAUSE_PRINT DXC_PARAMS);
 
-bool unload_filament(const float &unload_length, const bool show_lcd=false, 
-  #if HAS_DWIN_LCD
-	const DWINPauseMode mode=DWIN_PAUSE_MODE_PAUSE_PRINT
-  #else
-    const PauseMode mode=PAUSE_MODE_PAUSE_PRINT
-  #endif
+bool unload_filament(const float &unload_length, const bool show_lcd=false, const PauseMode mode=PAUSE_MODE_PAUSE_PRINT
   #if BOTH(FILAMENT_UNLOAD_ALL_EXTRUDERS, MIXING_EXTRUDER)
     , const float &mix_multiplier=1.0
   #endif

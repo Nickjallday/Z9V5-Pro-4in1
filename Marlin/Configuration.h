@@ -92,19 +92,19 @@
 #define CUSTOM_MACHINE_NAME 		"Z9V5"
 #endif
 #endif
-#define	FIRMWARE_VERSION					"V1.0.8"
-#define	STRING_DISTRIBUTION_DATE	"2021-05-14"
+#define	FIRMWARE_VERSION					"V1.1.0"
+#define	STRING_DISTRIBUTION_DATE	"2021-06-15"
 #define EEPROM_VERSION 			  		"V84"						//modify it if need auto inilize EEPROM after upload firmware
 #define STRING_CONFIG_H_AUTHOR    "(ZONESTAR, Hally)" 		// Who made the changes.
 #define WEBSITE_URL 							"www.zonestar3d.com"
 //===========================================================================
 //default feature, usually keep it enable
 #define		SWITCH_EXTRUDER_SQUENCY
-#define		OPTION_AUTOPOWEROFF			//Power off after printer
-#define		OPTION_DUALZ_DRIVE  		//Dual Z driver motor(connect to Z2 motor connector)
-#define 	OPTION_Z2_ENDSTOP				//Dual Z driver motor(connect to Z2- connector)
-#define		OPTION_PL08N 			    	//Probe use PL_08N
-#define		OPTION_BED_COATING			//bed coating Glass/Sticker etc.
+#define		OPTION_AUTOPOWEROFF						//Power off after printer
+#define		OPTION_DUALZ_DRIVE  					//Dual Z driver motor(connect to Z2 motor connector)
+#define 	OPTION_Z2_ENDSTOP							//Dual Z driver motor(connect to Z2- connector)
+//#define		OPTION_PL08N 			    				//Probe use PL_08N
+//#define		OPTION_BED_COATING						//bed coating Glass/Sticker etc.
 //===========================================================================
 
 //===========================================================================
@@ -113,18 +113,22 @@
 //#define	OPTION_BGM								//BGM extruder
 //#define	OPTION_TMC2225_EXTRUDER		//TMC2225 be used to extruder motors
 //#define	OPTION_TMC2209_ALL_MOTOR	//TMC2209 be used to all motor
-//#define	OPTION_3DTOUCH						//Probe use 3DTouch or BLTouch
+#define	OPTION_3DTOUCH						//Probe use 3DTouch or BLTouch
+//#define	OPTION_ZLSENSOR						//Probe use ZLSENSOR
 //#define	OPTION_REPEAT_PRINTING		//Auto remove prints feature
 
-#ifdef OPTION_3DTOUCH
+#if EITHER(OPTION_3DTOUCH, OPTION_ZLSENSOR)
 #undef OPTION_PL08N
+#undef OPTION_BED_COATING
 #endif
 //==========================================================================
 //Bed coating
-#if	ENABLED(OPTION_Z9V5_PRO) && ENABLED(OPTION_BED_COATING) 
-#define	BED_COATING_THICKNESS	0.0			//glass thickness
+#if ENABLED(OPTION_BED_COATING)
+#if	ENABLED(OPTION_Z9V5_PRO)
+#define	BED_COATING_THICKNESS	3.5			//glass thickness
 #else
 #define	BED_COATING_THICKNESS	0.2			//stikcer thickness
+#endif
 #endif
 //===========================================================================
 //UART port
@@ -135,7 +139,7 @@
 #if ENABLED(OPTION_Z9V5_PRO)
   #define LCD_SERIAL_PORT 1				//LCD DWIN connect to EXP2
   #if ENABLED(OPTION_3DTOUCH)
-  #define BLTOUCH_ON_EXP1 				//3DTouch connect to EXP1
+  //#define BLTOUCH_ON_EXP1 				//3DTouch connect to EXP1
   #endif
 #else															//LCD12864 connect to EXP1																	
 	#if ENABLED(OPTION_3DTOUCH)
@@ -213,9 +217,11 @@
  * you commonly experience drop-outs during host printing.
  * You may try up to 1000000 to speed up SD file transfer.
  *
- * :[2400, 9600, 19200, 38400, 57600, 115200, 250000, 500000, 1000000]
+ * :[2400, 9600, 19200, 38400, 57600, 115200, 250000, 500000, 921600]
  */
-#define BAUDRATE 115200
+#define BAUDRATE 				115200
+#define WIFI_BAUDRATE   115200
+
 
 // Enable the Bluetooth serial interface on AT90USB devices
 //#define BLUETOOTH
@@ -392,7 +398,7 @@
 #define MIXING_EXTRUDER
 #if ENABLED(MIXING_EXTRUDER)  
   #define MIXING_STEPPERS 	  4  		// Number of steppers in your mixing extruder
-  #define MIXING_VIRTUAL_TOOLS 16  		// Use the Virtual Tool method with M163 and M164
+  #define MIXING_VIRTUAL_TOOLS 24  		// Use the Virtual Tool method with M163 and M164
   #define USE_PRECENT_MIXVALUE			// Use percent mix data on LCD setting and gcode command
   #define MIX_STATUS_SCREEN_IMAGE		// show mix rate ICON and data in LCD (only applied in LCD12864)
   #if ENABLED(MIX_STATUS_SCREEN_IMAGE) && DISABLED(CUSTOM_STATUS_SCREEN_IMAGE)
@@ -716,7 +722,7 @@
 #define USE_ZMIN_PLUG
 //#define USE_XMAX_PLUG
 //#define USE_YMAX_PLUG
-//#define USE_ZMAX_PLUG
+#define USE_ZMAX_PLUG
 
 // Enable pullup for all endstops to prevent a floating state
 #define ENDSTOPPULLUPS
@@ -873,9 +879,9 @@
  *   M204 R    Retract Acceleration
  *   M204 T    Travel Acceleration
  */
-#define DEFAULT_ACCELERATION           800    // X, Y, Z and E acceleration for printing moves
+#define DEFAULT_ACCELERATION          1000    // X, Y, Z and E acceleration for printing moves
 #define DEFAULT_RETRACT_ACCELERATION  3000    // E acceleration for retracts
-#define DEFAULT_TRAVEL_ACCELERATION   1500    // X, Y, Z acceleration for travel (non printing) moves
+#define DEFAULT_TRAVEL_ACCELERATION   2000    // X, Y, Z acceleration for travel (non printing) moves
 
 /**
  * Default Jerk limits (mm/s)
@@ -959,7 +965,7 @@
  *      - normally-open switches to 5V and D32.
  *
  */
-#if ENABLED(OPTION_PL08N)
+#if EITHER(OPTION_PL08N,OPTION_ZLSENSOR)
 #define Z_MIN_PROBE_PIN 	PB13 					//Z_MAX_PIN as probe pin
 #elif ENABLED(OPTION_3DTOUCH)
 #define Z_MIN_PROBE_PIN 	BLTOUCH_PROBE_PIN 		//
@@ -984,7 +990,7 @@
  * A Fix-Mounted Probe either doesn't deploy or needs manual deployment.
  *   (e.g., an inductive probe or a nozzle-based probe-switch.)
  */
-#if ENABLED(OPTION_PL08N)
+#if EITHER(OPTION_PL08N,OPTION_ZLSENSOR)
 #define FIX_MOUNTED_PROBE
 #endif
 
@@ -1092,7 +1098,7 @@
  *     |    [-]    |
  *     O-- FRONT --+
  */
-#define NOZZLE_TO_PROBE_OFFSET { 0, -35, 0 }
+#define NOZZLE_TO_PROBE_OFFSET { -24, -41, 0 }
 
 // Most probes should stay away from the edges of the bed, but
 // with NOZZLE_AS_PROBE this can be negative for a wider probing area.
@@ -1105,7 +1111,7 @@
 #define Z_PROBE_SPEED_FAST HOMING_FEEDRATE_Z
 
 // Feedrate (mm/min) for the "accurate" probe of each point
-#define Z_PROBE_SPEED_SLOW (Z_PROBE_SPEED_FAST / 2)
+#define Z_PROBE_SPEED_SLOW (Z_PROBE_SPEED_FAST / 4)
 
 /**
  * Multiple Probing
@@ -1133,9 +1139,9 @@
  * Example: `M851 Z-5` with a CLEARANCE of 4  =>  9mm from bed to nozzle.
  *     But: `M851 Z+1` with a CLEARANCE of 2  =>  2mm from bed to nozzle.
  */
-#define Z_CLEARANCE_DEPLOY_PROBE   10 // Z Clearance for Deploy/Stow
+#define Z_CLEARANCE_DEPLOY_PROBE   5 // Z Clearance for Deploy/Stow
 #define Z_CLEARANCE_BETWEEN_PROBES 10 // Z Clearance between probe points
-#define Z_CLEARANCE_MULTI_PROBE     8 // Z Clearance between multiple probes
+#define Z_CLEARANCE_MULTI_PROBE     5 // Z Clearance between multiple probes
 //#define Z_AFTER_PROBING           	5 // Z position after probing is done
 
 #define Z_PROBE_LOW_POINT          -5 // Farthest distance below the trigger-point to go before stopping
@@ -1234,8 +1240,8 @@
 #define X_BED_SIZE 510
 #define Y_BED_SIZE 510
 #else
-#define X_BED_SIZE 310
-#define Y_BED_SIZE 310
+#define X_BED_SIZE 300
+#define Y_BED_SIZE 300
 #endif
 
 // Travel limits (mm) after homing, corresponding to endstop positions.
@@ -1243,14 +1249,14 @@
 #define X_MIN_POS -5
 #define Y_MIN_POS -18
 #else
-#define X_MIN_POS 0
-#define Y_MIN_POS -18
+#define X_MIN_POS -5
+#define Y_MIN_POS -23
 #endif
 
-#define Z_MIN_POS 0
+#define Z_MIN_POS -2
 #define X_MAX_POS X_BED_SIZE
 #define Y_MAX_POS Y_BED_SIZE
-#define Z_MAX_POS 400
+#define Z_MAX_POS 395
 
 /**
  * Software Endstops
@@ -1351,7 +1357,7 @@
  *   leveling in steps so you can manually adjust the Z height at each grid-point.
  *   With an LCD controller the process is guided step-by-step.
  */
-#if EITHER(OPTION_PL08N, OPTION_3DTOUCH)
+#if ANY(OPTION_PL08N, OPTION_3DTOUCH,OPTION_ZLSENSOR)
 //#define AUTO_BED_LEVELING_3POINT
 //#define AUTO_BED_LEVELING_LINEAR
 #define AUTO_BED_LEVELING_BILINEAR
@@ -1363,7 +1369,7 @@
  * Normally G28 leaves leveling disabled on completion. Enable
  * this option to have G28 restore the prior leveling state.
  */
-#if EITHER(OPTION_PL08N, OPTION_3DTOUCH)
+#if ANY(OPTION_PL08N, OPTION_3DTOUCH,OPTION_ZLSENSOR)
 #define RESTORE_LEVELING_AFTER_G28
 #endif
 
@@ -1407,12 +1413,12 @@
   #define GRID_MAX_POINTS_X 		6
   #define GRID_MAX_POINTS_Y 		GRID_MAX_POINTS_X
 	#else
-	#define GRID_MAX_POINTS_X 		4
+	#define GRID_MAX_POINTS_X 		5
   #define GRID_MAX_POINTS_Y 		GRID_MAX_POINTS_X
 	#endif
-  #define PROBING_MARGIN_LEFT		20
-  #define PROBING_MARGIN_RIGHT	20
-  #define PROBING_MARGIN_FRONT	20
+  #define PROBING_MARGIN_LEFT		10
+  #define PROBING_MARGIN_RIGHT	10
+  #define PROBING_MARGIN_FRONT	10
   #define PROBING_MARGIN_BACK		45
 
   #define AUTO_UPDATA_PROBE_Z_OFFSET			//Add G29 N to catch the Probe Z offset
@@ -1474,12 +1480,12 @@
  * Add a bed leveling sub-menu for ABL or MBL.
  * Include a guided procedure if manual probing is enabled.
  */
-#if EITHER(OPTION_PL08N, OPTION_3DTOUCH)
+#if ANY(OPTION_PL08N, OPTION_3DTOUCH,OPTION_ZLSENSOR)
 #define LCD_BED_LEVELING
 #endif
 
 #if ENABLED(LCD_BED_LEVELING)
-  #define MESH_EDIT_Z_STEP  0.025 // (mm) Step size while manually probing Z axis.
+  #define MESH_EDIT_Z_STEP  0.01 // (mm) Step size while manually probing Z axis.
   #define LCD_PROBE_Z_RANGE 4     // (mm) Z Range centered on Z_MIN_POS for LCD Z adjustment
   //#define MESH_EDIT_MENU        // Add a menu to edit mesh points
 #endif
@@ -1523,11 +1529,11 @@
 // - Move the Z probe (or nozzle) to a defined XY point before Z Homing.
 // - Prevent Z homing when the Z probe is outside bed area.
 //
-//#define Z_SAFE_HOMING
+#define Z_SAFE_HOMING
 
 #if ENABLED(Z_SAFE_HOMING)
-  #define Z_SAFE_HOMING_X_POINT X_CENTER  // X point for Z homing
-  #define Z_SAFE_HOMING_Y_POINT Y_CENTER  // Y point for Z homing
+  #define Z_SAFE_HOMING_X_POINT -5  // X point for Z homing
+  #define Z_SAFE_HOMING_Y_POINT -23  // Y point for Z homing
 #endif
 
 // Homing speeds (mm/min)
@@ -1665,7 +1671,7 @@
 
 #if ENABLED(NOZZLE_PARK_FEATURE)
   // Specify a park position as { X, Y, Z_raise }
-  #define NOZZLE_PARK_POINT { (X_MIN_POS + 10), (Y_MAX_POS/2), 20 }
+  #define NOZZLE_PARK_POINT { (X_MIN_POS + 10), 0, 20 }
   //#define NOZZLE_PARK_X_ONLY          // X move only is required to park
   //#define NOZZLE_PARK_Y_ONLY          // Y move only is required to park
   #define NOZZLE_PARK_Z_RAISE_MIN   2   // (mm) Always raise Z by at least this distance
@@ -1774,7 +1780,7 @@
  *
  * View the current statistics with M78.
  */
-//#define PRINTCOUNTER
+#define PRINTCOUNTER
 
 /**
  * Password
@@ -2620,3 +2626,5 @@
 
 // Edit servo angles with M281 and save to EEPROM with M500
 //#define EDITABLE_SERVO_ANGLES
+
+//#define	DEBUG_DWIN_LCD	

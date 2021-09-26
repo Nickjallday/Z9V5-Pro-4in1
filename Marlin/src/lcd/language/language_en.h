@@ -655,36 +655,7 @@ namespace Language_en {
     PROGMEM Language_Str MSG_FILAMENT_CHANGE_PURGE         = _UxGT(MSG_1_LINE("Purging..."));
     PROGMEM Language_Str MSG_FILAMENT_CHANGE_CONT_PURGE    = _UxGT(MSG_1_LINE("Click to finish"));
     PROGMEM Language_Str MSG_FILAMENT_CHANGE_RESUME        = _UxGT(MSG_1_LINE("Resuming..."));
-  #endif
-
-  #if HAS_DWIN_LCD
-  	PROGMEM Language_Str MSG_DWIN_FILAMENT_CHANGE_START1   = _UxGT("Filament change");
-    PROGMEM Language_Str MSG_DWIN_FILAMENT_CHANGE_START2   = _UxGT("to start!");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_CHANGE_UNLOAD1  = _UxGT("Wait for");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_CHANGE_UNLOAD2  = _UxGT("Filament Unload!");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_CHANGE_LOAD1    = _UxGT("Wait for");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_CHANGE_LOAD2    = _UxGT("Filament Load!");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_CHANGE_HEATING1 = _UxGT("Wait for");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_CHANGE_HEATING2 = _UxGT("Nozzle Heating...");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_CHANGE_PURGE1   = _UxGT("Wait for");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_CHANGE_PURGE2   = _UxGT("Filament Purge!");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_CHANGE_INSERT1  = _UxGT("Insert filament");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_CHANGE_INSERT2  = _UxGT("and press button");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_CHANGE_INSERT3  = _UxGT("to continue!");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_CHANGE_OPTION   = _UxGT("Purge More or not!");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_CHANGE_RESUME   = _UxGT("Resume Print!");
-  	PROGMEM Language_Str MSG_DWIN_FILAMENT_PRINT_PAUSE     = _UxGT("Print Paused");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_PRINT_CHANGE    = _UxGT("Filament Change");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_PRINT_UNLOAD    = _UxGT("Filament Unload");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_PRINT_LOAD      = _UxGT("Filament Load");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_PRINT_INSERT    = _UxGT("Filament Insert");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_PRINT_PURGE     = _UxGT("Filament Purge");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_PRINT_OPTION    = _UxGT("Filament Option");
-	PROGMEM Language_Str MSG_DWIN_FILAMENT_PRINT_RESUME    = _UxGT("Resume Print");
-	PROGMEM Language_Str MSG_DWIN_POWERDOWN                = _UxGT("Confirm Shutdown?");
-	PROGMEM Language_Str MSG_DWIN_POWERDOWN_TITLE          = _UxGT("Powerdown");
-  #endif
-  
+  #endif  
   PROGMEM Language_Str MSG_TMC_DRIVERS                     = _UxGT("TMC Drivers");
   PROGMEM Language_Str MSG_TMC_CURRENT                     = _UxGT("Driver Current");
   PROGMEM Language_Str MSG_TMC_HYBRID_THRS                 = _UxGT("Hybrid Threshold");

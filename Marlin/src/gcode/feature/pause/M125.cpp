@@ -39,6 +39,10 @@
   #include "../../../feature/powerloss.h"
 #endif
 
+#if HAS_DWIN_LCD
+  #include "../../../lcd/dwin/dwin_ui/dwin.h"
+#endif
+
 /**
  * M125: Store current position and move to parking position.
  *       Called on pause (by M25) to prevent material leaking onto the
@@ -74,13 +78,18 @@ void GcodeSuite::M125() {
   const bool sd_printing = TERN0(SDSUPPORT, IS_SD_PRINTING());
 
   TERN_(HAS_LCD_MENU, lcd_pause_show_message(PAUSE_MESSAGE_PARKING, PAUSE_MODE_PAUSE_PRINT));
+	TERN_(HAS_DWIN_LCD, DWIN_Pause_Show_Message(PAUSE_MESSAGE_PARKING, PAUSE_MODE_PAUSE_PRINT));
 
+	#if HAS_LCD_MENU
   const bool show_lcd = TERN0(HAS_LCD_MENU, parser.seenval('P'));
+	#elif HAS_DWIN_LCD
+	const bool show_lcd = true;
+	#endif
 
   if (pause_print(retract, park_point, 0, show_lcd)) {
-    TERN_(POWER_LOSS_RECOVERY, if (recovery.enabled) recovery.save(true));
-    if (ENABLED(EXTENSIBLE_UI) || !sd_printing || show_lcd) {
-      wait_for_confirmation(false, 0);
+    TERN_(POWER_LOSS_RECOVERY, recovery.save(true));
+    if (ENABLED(EXTENSIBLE_UI) || !sd_printing || show_lcd) {      
+			wait_for_confirmation(false, 0);
       resume_print(0, 0, -retract, 0);
     }
   }

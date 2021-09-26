@@ -47,7 +47,7 @@
 #endif
 
 #if HAS_DWIN_LCD
-  #include "../../../lcd/dwin/e3v2/dwin.h"
+  #include "../../../lcd/dwin/dwin_ui/dwin.h"
 #endif
 
 /**
@@ -71,13 +71,10 @@ void GcodeSuite::M701() {
   #if ENABLED(MIXING_EXTRUDER)
     const int8_t target_e_stepper = get_target_e_stepper_from_command();
     if (target_e_stepper < 0) return;
-
     const uint8_t old_mixing_tool = mixer.get_current_vtool();
     mixer.T(MIXER_DIRECT_SET_TOOL);
-
     MIXER_STEPPER_LOOP(i) mixer.set_collector(i, (i == (uint8_t)target_e_stepper) ? 1.0 : 0.0);
     mixer.normalize();
-
     const int8_t target_extruder = active_extruder;
   #else
     const int8_t target_extruder = get_target_extruder_from_command();
@@ -89,9 +86,7 @@ void GcodeSuite::M701() {
 
   // Show initial "wait for load" message
   TERN_(HAS_LCD_MENU, lcd_pause_show_message(PAUSE_MESSAGE_LOAD, PAUSE_MODE_LOAD_FILAMENT, target_extruder));
-  #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-  TERN_(HAS_DWIN_LCD, DWIN_Pause_Show_Message(DWIN_PAUSE_MESSAGE_LOAD, DWIN_PAUSE_MODE_LOAD_FILAMENT));
-  #endif
+  TERN_(HAS_DWIN_LCD, DWIN_Pause_Show_Message(PAUSE_MESSAGE_LOAD, PAUSE_MODE_LOAD_FILAMENT, target_extruder));
   //SERIAL_ECHOLNPGM("Filament runout load...");
   //SERIAL_EOL();
 
@@ -119,11 +114,7 @@ void GcodeSuite::M701() {
       FILAMENT_CHANGE_ALERT_BEEPS,
       true,                                           // show_lcd
       thermalManager.still_heating(target_extruder),  // pause_for_user
-      #if HAS_DWIN_LCD
-        DWIN_PAUSE_MODE_LOAD_FILAMENT
-      #else
-        PAUSE_MODE_LOAD_FILAMENT
-      #endif
+      PAUSE_MODE_LOAD_FILAMENT
       #if ENABLED(DUAL_X_CARRIAGE)
         , target_extruder                             // Dual X target
       #endif
@@ -144,7 +135,7 @@ void GcodeSuite::M701() {
 
   // Show status screen
   TERN_(HAS_LCD_MENU, lcd_pause_show_message(PAUSE_MESSAGE_STATUS));
-  //TERN_(HAS_DWIN_LCD,DWIN_Pause_Show_Message(DWIN_PAUSE_MESSAGE_STATUS,DWIN_PAUSE_MODE_STATE));
+  TERN_(HAS_DWIN_LCD,DWIN_Pause_Show_Message(PAUSE_MESSAGE_STATUS));
 
   //SERIAL_ECHOLNPGM("Filament runout state...");
   //SERIAL_EOL();
@@ -202,9 +193,8 @@ void GcodeSuite::M702() {
 
   // Show initial "wait for unload" message
   TERN_(HAS_LCD_MENU, lcd_pause_show_message(PAUSE_MESSAGE_UNLOAD, PAUSE_MODE_UNLOAD_FILAMENT, target_extruder));
-  #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-  TERN_(HAS_DWIN_LCD, DWIN_Pause_Show_Message(DWIN_PAUSE_MESSAGE_UNLOAD, DWIN_PAUSE_MODE_UNLOAD_FILAMENT));
-  #endif
+  TERN_(HAS_DWIN_LCD, DWIN_Pause_Show_Message(PAUSE_MESSAGE_UNLOAD, PAUSE_MODE_UNLOAD_FILAMENT, target_extruder));
+
   #if HAS_MULTI_EXTRUDER && DISABLED(PRUSA_MMU2)
     // Change toolhead if specified
     uint8_t active_extruder_before_filament_change = active_extruder;
@@ -224,13 +214,7 @@ void GcodeSuite::M702() {
       if (!parser.seenval('T')) {
         HOTEND_LOOP() {
           if (e != active_extruder) tool_change(e, false);
-		  #if HAS_DWIN_LCD
-		    #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-          	unload_filament(-fc_settings[e].unload_length, true, DWIN_PAUSE_MODE_UNLOAD_FILAMENT);
-			#endif
-		  #else
-		   	unload_filament(-fc_settings[e].unload_length, true, PAUSE_MODE_UNLOAD_FILAMENT);
-		  #endif
+		   		unload_filament(-fc_settings[e].unload_length, true, PAUSE_MODE_UNLOAD_FILAMENT);
         }
       }
       else
@@ -239,11 +223,7 @@ void GcodeSuite::M702() {
       // Unload length
       const float unload_length = -ABS(parser.seen('U') ? parser.value_axis_units(E_AXIS)
                                                         : fc_settings[target_extruder].unload_length);
-	  #if HAS_DWIN_LCD
-      	unload_filament(unload_length, true, DWIN_PAUSE_MODE_UNLOAD_FILAMENT
-      #else
 	    unload_filament(unload_length, true, PAUSE_MODE_UNLOAD_FILAMENT
-      #endif
         #if ALL(FILAMENT_UNLOAD_ALL_EXTRUDERS, MIXING_EXTRUDER)
           , mix_multiplier
         #endif
@@ -265,7 +245,7 @@ void GcodeSuite::M702() {
 
   // Show status screen
   TERN_(HAS_LCD_MENU, lcd_pause_show_message(PAUSE_MESSAGE_STATUS));
-  //TERN_(HAS_DWIN_LCD, DWIN_Pause_Show_Message(DWIN_PAUSE_MESSAGE_STATUS,DWIN_PAUSE_MODE_STATE));
+  TERN_(HAS_DWIN_LCD, DWIN_Pause_Show_Message(PAUSE_MESSAGE_STATUS));
 
   //SERIAL_ECHOLNPGM("Filament runout state...");
   //SERIAL_EOL();

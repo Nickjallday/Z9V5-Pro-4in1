@@ -93,6 +93,11 @@
   #include "../lcd/ultralcd.h"
 #endif
 
+#if HAS_DWIN_LCD
+  #include "../lcd/dwin/dwin_ui/dwin.h"
+#endif
+
+
 #if ENABLED(ADVANCED_PAUSE_FEATURE)
   #include "../feature/pause.h"
 #endif

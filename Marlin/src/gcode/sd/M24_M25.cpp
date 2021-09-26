@@ -41,6 +41,11 @@
   #include "../../feature/powerloss.h"
 #endif
 
+#if HAS_DWIN_LCD
+  #include "../../lcd/dwin/dwin_ui/dwin.h"
+#endif
+
+
 #include "../../MarlinCore.h" // for startOrResumeJob
 
 /**
@@ -61,8 +66,8 @@ void GcodeSuite::M24() {
   #endif
 
   if (card.isFileOpen()) {
-    card.startFileprint();            					// SD card will now be read for commands
-    startOrResumeJob();               					// Start (or resume) the print job timer
+    card.startFileprint();            								// SD card will now be read for commands
+    startOrResumeJob();               								// Start (or resume) the print job timer
     TERN_(POWER_LOSS_RECOVERY, recovery.prepare());		// backup the printing file name
   }
 
@@ -95,7 +100,7 @@ void GcodeSuite::M25() {
     #endif
 
     #if ENABLED(POWER_LOSS_RECOVERY)
-      if (recovery.enabled) recovery.save(true);
+      recovery.save(true);
     #endif
 
     print_job_timer.pause();

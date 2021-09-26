@@ -24,7 +24,7 @@
 #include "../../lcd/ultralcd.h"
 
 #if HAS_DWIN_LCD
-  #include "../../lcd/dwin/e3v2/dwin.h"
+  #include "../../lcd/dwin/dwin_ui/dwin.h"
 #endif
 
 

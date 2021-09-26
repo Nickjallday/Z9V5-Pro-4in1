@@ -75,9 +75,9 @@
 
 static xyze_pos_t resume_position;
 
-#if (HAS_LCD_MENU)
-  PauseMenuResponse pause_menu_response;
-  PauseMode pause_mode = PAUSE_MODE_PAUSE_PRINT;
+#if (HAS_LCD_MENU || HAS_DWIN_LCD)
+PauseMenuResponse pause_menu_response = PAUSE_RESPONSE_WAIT_FOR;
+PauseMode pause_mode = PAUSE_MODE_PAUSE_PRINT;
 #endif
 
 fil_change_settings_t fc_settings[EXTRUDERS];
@@ -93,7 +93,7 @@ fil_change_settings_t fc_settings[EXTRUDERS];
 #endif
 
 #if HAS_DWIN_LCD
-  #include "../lcd/dwin/e3v2/dwin.h"
+  #include "../lcd/dwin/dwin_ui/dwin.h"
 #endif
 
 #if HAS_BUZZER
@@ -132,29 +132,18 @@ fil_change_settings_t fc_settings[EXTRUDERS];
  *
  * Returns 'true' if heating was completed, 'false' for abort
  */
- // bool ensure_safe_temperature(const bool wait/*=true*/, const PauseMode mode/*=DWIN_PAUSE_MODE_SAME*/) {
- bool ensure_safe_temperature(const bool wait/*=true*/, 
- 											#if HAS_DWIN_LCD
- 												const DWINPauseMode mode/*=DWIN_PAUSE_MODE_SAME*/) {
- 											#else
-											    const PauseMode mode/*=PAUSE_MODE_SAME*/) {
- 											#endif
- 
+static bool ensure_safe_temperature(const bool wait=true, const PauseMode mode=PAUSE_MODE_SAME) {
   DEBUG_SECTION(est, "ensure_safe_temperature", true);
   DEBUG_ECHOLNPAIR("... wait:", int(wait), " mode:", int(mode));
-
-  #if ENABLED(PREVENT_COLD_EXTRUSION)
+  
   if (!DEBUGGING(DRYRUN) && thermalManager.targetTooColdToExtrude(active_extruder))
-    thermalManager.setTargetHotend(thermalManager.extrude_min_temp, active_extruder);
-  #endif
+    thermalManager.setTargetHotend(EXTRUDE_MINTEMP, active_extruder);
 
   #if HAS_LCD_MENU
     lcd_pause_show_message(PAUSE_MESSAGE_HEATING, mode);
   #elif HAS_DWIN_LCD
-    #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-    if(HMI_flag.filament_runout_star)DWIN_Pause_Show_Message(DWIN_PAUSE_MESSAGE_HEATING, DWIN_PAUSE_MODE_CHANGE_FILAMENT);
-    #endif
-  #endif
+		DWIN_Pause_Show_Message(PAUSE_MESSAGE_HEATING, mode);
+	#endif
   UNUSED(mode);
 
   if (wait)
@@ -190,37 +179,29 @@ fil_change_settings_t fc_settings[EXTRUDERS];
  */
 bool load_filament(const float &slow_load_length/*=0*/, const float &fast_load_length/*=0*/, const float &purge_length/*=0*/, const int8_t max_beep_count/*=0*/,
                    const bool show_lcd/*=false*/, const bool pause_for_user/*=false*/,
-                   #if HAS_DWIN_LCD
-                   	const DWINPauseMode mode/*=DWIN_PAUSE_MODE_PAUSE_PRINT*/
-                   #else
-				   	const PauseMode mode/*=PAUSE_MODE_PAUSE_PRINT*/
-                   #endif
+                   const PauseMode mode/*=PAUSE_MODE_PAUSE_PRINT*/
                    DXC_ARGS
 ) {
   DEBUG_SECTION(lf, "load_filament", true);
   DEBUG_ECHOLNPAIR("... slowlen:", slow_load_length, " fastlen:", fast_load_length, " purgelen:", purge_length, " maxbeep:", int(max_beep_count), " showlcd:", int(show_lcd), " pauseforuser:", int(pause_for_user), " pausemode:", int(mode) DXC_SAY);
 
   UNUSED(show_lcd);
-
+	
   if (!ensure_safe_temperature(false, mode)) {
     #if HAS_LCD_MENU
       if (show_lcd) lcd_pause_show_message(PAUSE_MESSAGE_STATUS, mode);
-	#elif HAS_DWIN_LCD
-	    #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-    	if(HMI_flag.filament_runout_star)DWIN_Pause_Show_Message(DWIN_PAUSE_MESSAGE_HEATING, DWIN_PAUSE_MODE_CHANGE_FILAMENT);
+		#elif HAS_DWIN_LCD
+    	if (show_lcd) DWIN_Pause_Show_Message(PAUSE_MESSAGE_STATUS, mode);
 		#endif
-	#endif
     return false;
   }
 
   if (pause_for_user) {
-    #if HAS_LCD_MENU
+		#if HAS_LCD_MENU
       if (show_lcd) lcd_pause_show_message(PAUSE_MESSAGE_INSERT, mode);
-	#elif HAS_DWIN_LCD
-	    #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-    	if(HMI_flag.filament_runout_star)DWIN_Pause_Show_Message(DWIN_PAUSE_MESSAGE_HEATING, DWIN_PAUSE_MODE_CHANGE_FILAMENT);
-        #endif
-	#endif
+		#elif HAS_DWIN_LCD
+    	if (show_lcd) DWIN_Pause_Show_Message(PAUSE_MESSAGE_INSERT, mode);
+		#endif
     SERIAL_ECHO_MSG(_PMSG(STR_FILAMENT_CHANGE_INSERT));
 
     first_impatient_beep(max_beep_count);
@@ -246,9 +227,7 @@ bool load_filament(const float &slow_load_length/*=0*/, const float &fast_load_l
   #if HAS_LCD_MENU
     if (show_lcd) lcd_pause_show_message(PAUSE_MESSAGE_LOAD, mode);
   #elif HAS_DWIN_LCD
-    #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-    if(HMI_flag.filament_runout_star)DWIN_Pause_Show_Message(DWIN_PAUSE_MESSAGE_LOAD, DWIN_PAUSE_MODE_LOAD_FILAMENT);
-	#endif
+    if (show_lcd) DWIN_Pause_Show_Message(PAUSE_MESSAGE_LOAD, mode);
   #endif
 
   #if ENABLED(DUAL_X_CARRIAGE)
@@ -285,6 +264,8 @@ bool load_filament(const float &slow_load_length/*=0*/, const float &fast_load_l
 
     #if HAS_LCD_MENU
       if (show_lcd) lcd_pause_show_message(PAUSE_MESSAGE_PURGE);
+		#elif HAS_DWIN_LCD
+			if (show_lcd) DWIN_Pause_Show_Message(PAUSE_MESSAGE_PURGE);
     #endif
 
     TERN_(HOST_PROMPT_SUPPORT, host_prompt_do(PROMPT_USER_CONTINUE, PSTR("Filament Purging..."), CONTINUE_STR));
@@ -293,53 +274,34 @@ bool load_filament(const float &slow_load_length/*=0*/, const float &fast_load_l
     for (float purge_count = purge_length; purge_count > 0 && wait_for_user; --purge_count)
       unscaled_e_move(1, ADVANCED_PAUSE_PURGE_FEEDRATE);
     wait_for_user = false;
-
-  #else
-    #if HAS_LCD_MENU
+  #else		
     do {
       if (purge_length > 0) {
         // "Wait for filament purge"
-        if (show_lcd) lcd_pause_show_message(PAUSE_MESSAGE_PURGE);
+        #if HAS_LCD_MENU
+          if (show_lcd) lcd_pause_show_message(PAUSE_MESSAGE_PURGE);
+				#elif HAS_DWIN_LCD
+					if (show_lcd)  DWIN_Pause_Show_Message(PAUSE_MESSAGE_PURGE);
+        #endif
+
         // Extrude filament to get into hotend
         unscaled_e_move(purge_length, ADVANCED_PAUSE_PURGE_FEEDRATE);
       }
       TERN_(HOST_PROMPT_SUPPORT, filament_load_host_prompt()); // Initiate another host prompt. (NOTE: host_response_handler may also do this!)
-      if (show_lcd) {
+      #if (HAS_LCD_MENU || HAS_DWIN_LCD)
+        if (show_lcd) {
           // Show "Purge More" / "Resume" menu and wait for reply
           KEEPALIVE_STATE(PAUSED_FOR_USER);
           wait_for_user = false;
-          lcd_pause_show_message(PAUSE_MESSAGE_OPTION);
+          TERN_(HAS_LCD_MENU, lcd_pause_show_message(PAUSE_MESSAGE_OPTION));
+					TERN_(HAS_DWIN_LCD, DWIN_Pause_Show_Message(PAUSE_MESSAGE_OPTION));
           while (pause_menu_response == PAUSE_RESPONSE_WAIT_FOR) idle_no_sleep();
-      }
-    }while (TERN0(HAS_LCD_MENU, show_lcd && pause_menu_response == PAUSE_RESPONSE_EXTRUDE_MORE));		
-	#elif HAS_DWIN_LCD
-	FIL.Puge_More_No = false;
-	do {
-      if (purge_length > 0) {
-        // "Wait for filament purge"
-        #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-    	if(HMI_flag.filament_runout_star)DWIN_Pause_Show_Message(DWIN_PAUSE_MESSAGE_PURGE, DWIN_PAUSE_MODE_PURGE_FILAMENT);
-        #endif
-		// Extrude filament to get into hotend
-        unscaled_e_move(purge_length, ADVANCED_PAUSE_PURGE_FEEDRATE);
-      }
-      TERN_(HOST_PROMPT_SUPPORT, filament_load_host_prompt()); // Initiate another host prompt. (NOTE: host_response_handler may also do this!)	  
-  	  // Show "Purge More" / "Resume" menu and wait for reply
-      KEEPALIVE_STATE(PAUSED_FOR_USER);
-      wait_for_user = false;
-	  FIL.Puge_More_Yes = false;
-      //lcd_pause_show_message(PAUSE_MESSAGE_OPTION);
-      #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-      if(HMI_flag.filament_runout_star)DWIN_Pause_Show_Message(DWIN_PAUSE_MESSAGE_OPTION, DWIN_PAUSE_MODE_OPTION_FILAMENT);
+        }
       #endif
-	  //while ((pause_menu_response == PAUSE_RESPONSE_WAIT_FOR)&&(!FIL.Puge_More_Yes)) idle_no_sleep();
-      while ((!FIL.Puge_More_Yes)&HMI_flag.filament_runout_star) idle_no_sleep();
-      // Keep looping if "Purge More" was selected
-	} while ((!FIL.Puge_More_No)&HMI_flag.filament_runout_star); 
-	#endif
+    	}while (show_lcd && pause_menu_response == PAUSE_RESPONSE_EXTRUDE_MORE); 			
+			
   #endif
   TERN_(HOST_PROMPT_SUPPORT, host_action_prompt_end());
-
   return true;
 }
 
@@ -354,11 +316,7 @@ bool load_filament(const float &slow_load_length/*=0*/, const float &fast_load_l
  * Returns 'true' if unload was completed, 'false' for abort
  */
 bool unload_filament(const float &unload_length, const bool show_lcd/*=false*/,
-					#if HAS_DWIN_LCD
-					 	const DWINPauseMode mode/*=DWIN_PAUSE_MODE_PAUSE_PRINT*/
-					#else
 						const PauseMode mode/*=PAUSE_MODE_PAUSE_PRINT*/
-					#endif
                      #if BOTH(FILAMENT_UNLOAD_ALL_EXTRUDERS, MIXING_EXTRUDER)
                        , const float &mix_multiplier/*=1.0*/
                      #endif
@@ -378,11 +336,9 @@ bool unload_filament(const float &unload_length, const bool show_lcd/*=false*/,
 
   if (!ensure_safe_temperature(false, mode)) {
     #if HAS_LCD_MENU
-      if (show_lcd) lcd_pause_show_message(PAUSE_MESSAGE_STATUS);
+      if(show_lcd) lcd_pause_show_message(PAUSE_MESSAGE_STATUS);
     #elif HAS_DWIN_LCD
-	    #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-    	if(HMI_flag.filament_runout_star)DWIN_Pause_Show_Message(DWIN_PAUSE_MESSAGE_HEATING, DWIN_PAUSE_MODE_CHANGE_FILAMENT);
-		#endif
+    	if(show_lcd) DWIN_Pause_Show_Message(PAUSE_MESSAGE_STATUS);
 	#endif
     return false;
   }
@@ -390,9 +346,7 @@ bool unload_filament(const float &unload_length, const bool show_lcd/*=false*/,
   #if HAS_LCD_MENU
     if (show_lcd) lcd_pause_show_message(PAUSE_MESSAGE_UNLOAD, mode);
   #elif HAS_DWIN_LCD
-    #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-    if(HMI_flag.filament_runout_star)DWIN_Pause_Show_Message(DWIN_PAUSE_MESSAGE_UNLOAD, DWIN_PAUSE_MODE_UNLOAD_FILAMENT);
-	#endif
+    if(show_lcd) DWIN_Pause_Show_Message(PAUSE_MESSAGE_UNLOAD, mode);
   #endif
 
   // Retract filament
@@ -502,14 +456,7 @@ bool pause_print(const float &retract, const xyz_pos_t &park_point, const float 
   #endif
 
   if (unload_length)   // Unload the filament
-  	#if HAS_DWIN_LCD
-	    #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-    	unload_filament(unload_length, show_lcd, DWIN_PAUSE_MODE_CHANGE_FILAMENT);
-		#endif
-	#else
-		unload_filament(unload_length, show_lcd, PAUSE_MODE_CHANGE_FILAMENT);
-	#endif
-
+		unload_filament(unload_length, show_lcd, PAUSE_MODE_CHANGE_FILAMENT);	
   #if ENABLED(DUAL_X_CARRIAGE)
     active_extruder = saved_ext;
     extruder_duplication_enabled = saved_ext_dup_mode;
@@ -537,14 +484,7 @@ void show_continue_prompt(const bool is_reload) {
   DEBUG_ECHOLNPAIR("... is_reload:", int(is_reload));
 
   TERN_(HAS_LCD_MENU, lcd_pause_show_message(is_reload ? PAUSE_MESSAGE_INSERT : PAUSE_MESSAGE_WAITING));
-  #if HAS_DWIN_LCD
-    #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-    if(is_reload)	
-  	  DWIN_Pause_Show_Message(DWIN_PAUSE_MESSAGE_INSERT, DWIN_PAUSE_MODE_CHANGE_FILAMENT);
-    else	
-  	  DWIN_Pause_Show_Message(DWIN_PAUSE_MESSAGE_WAITING, DWIN_PAUSE_MODE_CHANGE_FILAMENT);
-	#endif
-  #endif
+	TERN_(HAS_DWIN_LCD, DWIN_Pause_Show_Message(is_reload ? PAUSE_MESSAGE_INSERT : PAUSE_MESSAGE_WAITING));
 
   SERIAL_ECHO_START();
   serialprintPGM(is_reload ? PSTR(_PMSG(STR_FILAMENT_CHANGE_INSERT) "\n") : PSTR(_PMSG(STR_FILAMENT_CHANGE_WAIT) "\n"));
@@ -588,6 +528,7 @@ void wait_for_confirmation(const bool is_reload/*=false*/, const int8_t max_beep
     // re-heat the nozzle, re-show the continue prompt, restart idle timers, start over
     if (nozzle_timed_out) {
       TERN_(HAS_LCD_MENU, lcd_pause_show_message(PAUSE_MESSAGE_HEAT));
+			TERN_(HAS_DWIN_LCD, DWIN_Pause_Show_Message(PAUSE_MESSAGE_HEAT));
       SERIAL_ECHO_MSG(_PMSG(STR_FILAMENT_CHANGE_HEAT));
 
       TERN_(HOST_PROMPT_SUPPORT, host_prompt_do(PROMPT_USER_CONTINUE, GET_TEXT(MSG_HEATER_TIMEOUT), GET_TEXT(MSG_REHEAT)));
@@ -676,13 +617,7 @@ void resume_print(const float &slow_load_length/*=0*/, const float &fast_load_le
   }
 
   // Load the new filament
-  #if HAS_DWIN_LCD
-    #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-  	load_filament(slow_load_length, fast_load_length, purge_length, max_beep_count, true, nozzle_timed_out, DWIN_PAUSE_MODE_SAME DXC_PASS);
-	#endif
-  #else
   	load_filament(slow_load_length, fast_load_length, purge_length, max_beep_count, true, nozzle_timed_out, PAUSE_MODE_SAME DXC_PASS);
-  #endif
   
   if (targetTemp > 0) {
     thermalManager.setTargetHotend(targetTemp, active_extruder);
@@ -690,11 +625,7 @@ void resume_print(const float &slow_load_length/*=0*/, const float &fast_load_le
   }
 
   TERN_(HAS_LCD_MENU, lcd_pause_show_message(PAUSE_MESSAGE_RESUME));
-  #if HAS_DWIN_LCD
-    #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-    if(HMI_flag.filament_runout_star)DWIN_Pause_Show_Message(DWIN_PAUSE_MESSAGE_RESUME, DWIN_PAUSE_MODE_RESUME_FILAMENT);
-	#endif
-  #endif
+	TERN_(HAS_DWIN_LCD, DWIN_Pause_Show_Message(PAUSE_MESSAGE_RESUME));  
   
   // Check Temperature before moving hotend
   ensure_safe_temperature(false);
@@ -731,9 +662,10 @@ void resume_print(const float &slow_load_length/*=0*/, const float &fast_load_le
   planner.set_e_position_mm((destination.e = current_position.e = resume_position.e));
 
   // Write PLR now to update the z axis value
-  TERN_(POWER_LOSS_RECOVERY, if(recovery.enabled) recovery.save(true));
+  TERN_(POWER_LOSS_RECOVERY, recovery.save(true));
 
   TERN_(HAS_LCD_MENU, lcd_pause_show_message(PAUSE_MESSAGE_STATUS));
+	TERN_(HAS_DWIN_LCD, DWIN_Pause_Show_Message(PAUSE_MESSAGE_STATUS));
 
   #ifdef ACTION_ON_RESUMED
     host_action_resumed();
@@ -760,6 +692,7 @@ void resume_print(const float &slow_load_length/*=0*/, const float &fast_load_le
 
   TERN_(HAS_DISPLAY, ui.reset_status());
   TERN_(HAS_LCD_MENU, ui.return_to_status());
+	TERN_(HAS_DWIN_LCD, DWIN_ResumedFromPause());
 }
 
 #endif // ADVANCED_PAUSE_FEATURE

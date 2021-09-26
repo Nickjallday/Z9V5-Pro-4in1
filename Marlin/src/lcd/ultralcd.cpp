@@ -1630,7 +1630,7 @@ void MarlinUI::update() {
       init_lcd(); // Revive a noisy shared SPI LCD
     #endif
 
-    refresh();
+    TERN_(HAS_LCD_MENU, refresh());
 
     #if HAS_WIRED_LCD || defined(LED_BACKLIGHT_TIMEOUT)
       const millis_t ms = millis();

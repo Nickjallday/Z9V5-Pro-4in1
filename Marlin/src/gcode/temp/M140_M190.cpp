@@ -74,7 +74,7 @@ void GcodeSuite::M140() {
 
   if (got_temp) {
     thermalManager.setTargetBed(temp);
-
+		
     #if ENABLED(PRINTJOB_TIMER_AUTOSTART)
       /**
        * Stop the timer at the end of print. Hotend, bed target, and chamber

@@ -50,7 +50,7 @@
 #endif
 
 #if HAS_DWIN_LCD
-  #include "../../../lcd/dwin/e3v2/dwin.h"
+  #include "../../../lcd/dwin/dwin_ui/dwin.h"
 #endif
 
 /**
@@ -80,10 +80,8 @@ void GcodeSuite::M600() {
 	    const int8_t target_extruder = active_extruder;
 	#else
 	    const uint8_t old_mixing_tool = mixer.get_current_vtool();
-	    mixer.T(MIXING_VIRTUAL_TOOLS+1);
-		#if !HAS_DWIN_LCD
-	    	const int8_t target_extruder = active_extruder;
-		#endif
+	    mixer.T(MIXING_VIRTUAL_TOOLS+1);		
+	    const int8_t target_extruder = active_extruder;
 	#endif
   #else
     const int8_t target_extruder = get_target_extruder_from_command();
@@ -106,12 +104,8 @@ void GcodeSuite::M600() {
   // Show initial "wait for start" message
   #if HAS_LCD_MENU && DISABLED(MMU2_MENUS)
     lcd_pause_show_message(PAUSE_MESSAGE_CHANGING, PAUSE_MODE_PAUSE_PRINT, target_extruder);
-  #elif HAS_DWIN_LCD
-    #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-    HMI_flag.filament_runout_star = true;
-    DWIN_Pause_Show_Message(DWIN_PAUSE_MESSAGE_CHANGING, DWIN_PAUSE_MODE_PAUSE_PRINT);
-	#endif
-	
+  #elif HAS_DWIN_LCD    
+    DWIN_Pause_Show_Message(PAUSE_MESSAGE_CHANGING, PAUSE_MODE_PAUSE_PRINT, target_extruder);	
 	#ifdef DEBUG_FILAMENT_RUNOUT
 	SERIAL_ECHOLNPGM("Filament runout start...");
 	SERIAL_EOL();
@@ -196,9 +190,9 @@ void GcodeSuite::M600() {
     if (active_extruder_before_filament_change != active_extruder)
       tool_change(active_extruder_before_filament_change, false);
   #endif
-
-  TERN_(HAS_DWIN_LCD, HMI_flag.filament_runout_end = true);
+  
   TERN_(MIXING_EXTRUDER, mixer.T(old_mixing_tool)); // Restore original mixing tool 
+  TERN_(HAS_DWIN_LCD, DWIN_status = ID_SM_RUNOUT_DONE);
   #ifdef DEBUG_FILAMENT_RUNOUT
   SERIAL_ECHOLNPGM("Filament runout vtool...");
   SERIAL_EOL();

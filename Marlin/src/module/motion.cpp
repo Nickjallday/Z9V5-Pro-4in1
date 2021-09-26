@@ -92,8 +92,6 @@ bool relative_mode; // = false;
 float coating_thickness = BED_COATING_THICKNESS;
 #endif
 
-
-
 /**
  * Cartesian Current Position
  *   Used to track the native machine position as moves are queued.

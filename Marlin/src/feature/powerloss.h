@@ -117,17 +117,41 @@ typedef struct {
   } flag;
 
   uint8_t valid_foot;
-
+	
 #if HAS_DWIN_LCD
+ #if ENABLED(MIXING_EXTRUDER)
+ 
+ 	struct _st_randommixer_{
+		float zpos_start;
+		float zpos_end;
+		float mixer_current_random_Height;
+		uint8_t mixer_current_random_Extruders;
+	};
+	
   uint8_t mixer_model;
   uint8_t mixer_current_vtool;
   uint8_t mixer_current_percent[MIXING_STEPPERS];
-  float	  mixer_current_random_zpos[2];
+
+	float	mixer_current_random_zpos[2];
   float mixer_current_random_Height;
   uint8_t mixer_current_random_Extruders;
   float	  mixer_current_auto_zpos[2];
   uint8_t	 mixer_current_auto_vtool[2];
 
+	#if 0
+	struct _st_gradientmixer_{
+		float zpos_start;
+		float zpos_end;
+		uint8_t vtool_start;
+		uint8_t vtool_end;
+	};  
+
+	_st_gradientmixer_ gradient_mixer;
+	_st_randommixer_ random_mixer;
+	#endif
+	
+ #endif
+	
   float  current_Pause_Zpos_Buff;
   uint8_t  current_print_flag;
 #endif

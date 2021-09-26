@@ -26,6 +26,11 @@
  */
 
 #include "../core/millis_t.h"
+typedef enum {
+	REPRINT_GOON = 0,
+	REPRINT_NEXT,
+	REPRINT_FINISHED,
+}_emReprint_state;
 
 class RePrint {
   public:
@@ -40,7 +45,7 @@ class RePrint {
 		uint16_t Forward_lenght = FORWARD_PRINTING_LENGHT;
 		uint16_t tempbed_counter = 0;
 		millis_t reprt_timer;
-		enum RePrint_state_t: uint8_t{
+		typedef enum {
 			REPRINT_INIT = 0,
 			REPRINT_WAIT,
 			FORWARD_START,
@@ -48,7 +53,8 @@ class RePrint {
 			BACK_START,
 			BACK_MOVE,
 			BACK_STOP
-		};
+		}RePrint_state_t;
+		
 		RePrint_state_t reprt_state = REPRINT_INIT;
 		
 		static void Init();
@@ -59,6 +65,10 @@ class RePrint {
 		static void Forward_Move_Start();
 		static bool Forward_Move_Process(int Fmove_Timer);
 		bool Check_ENDSTOP(); 
+		void Check_Reprint_HOME();
+		_emReprint_state Reprint_check_state();
+		void Reprint_Stop();
+		void Reprint_goon();
 		
   private:
   

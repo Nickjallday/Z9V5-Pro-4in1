@@ -65,7 +65,7 @@
 #endif
 
 #if HAS_DWIN_LCD
-  #include "../../../lcd/dwin/e3v2/dwin.h"
+  #include "../../../lcd/dwin/dwin_ui/dwin.h"
 #endif
 
 #if HAS_MULTI_HOTEND
@@ -87,7 +87,7 @@
 #endif
 
 #if HAS_DWIN_LCD
-#define G29_RETURN(b) {	DWIN_CompletedLeveling();	return TERN_(G29_RETRY_AND_RECOVER, b);}
+#define G29_RETURN(b) {	DWIN_PopMenu_LevelingDone();	return TERN_(G29_RETRY_AND_RECOVER, b);}
 #else
 #define G29_RETURN(b) return TERN_(G29_RETRY_AND_RECOVER, b)
 #endif
@@ -597,13 +597,9 @@ G29_TYPE GcodeSuite::G29() {
     measured_z = 0;
 		float newz = 0.0;
 
-    #if ABL_GRID
- 	#if ENABLED(AUTO_UPDATA_PROBE_Z_OFFSET)
-	if(parser.seen('N')){		
-		float offsetz[5];
-		//float sum_offsetz = 0;
-		float max_offsetz = -10.0;
-		float min_offsetz = 10.0;
+#if ABL_GRID
+	#if ENABLED(AUTO_UPDATA_PROBE_Z_OFFSET)
+	if(parser.seen('N')){	
 		#if HAS_LCD_MENU
 		ui.return_to_status();
 		LCD_MESSAGEPGM_P(PSTR("To catch offset"));
@@ -613,76 +609,55 @@ G29_TYPE GcodeSuite::G29() {
 		DWIN_G29_Show_Messge(G29_CATCH_START);
 		#endif
 		
-		LOOP_L_N(i, 5){
+		float max_offsetz = -10.0;
+		float min_offsetz = 10.0;
+		LOOP_L_N(i, 4){
 		  switch(i)
 		  {
 		      case 0:
-			  	probePos.x = PROBING_MARGIN;
+				  	probePos.x = PROBING_MARGIN;
 		        probePos.y = PROBING_MARGIN;				
 			  	break;
 		      case 1:
-			  	probePos.x = (X_BED_SIZE - PROBING_MARGIN);
+				  	probePos.x = (X_BED_SIZE - PROBING_MARGIN);
 		        probePos.y = PROBING_MARGIN;				
-			  	break;
+			  	break;		      
 		      case 2:
-			  	probePos.x = X_CENTER;
-		        probePos.y = Y_CENTER;				
-			  	break;
-		      case 3:
-			  	probePos.x = PROBING_MARGIN;
+				  	probePos.x = PROBING_MARGIN;
 		        probePos.y = (Y_BED_SIZE - PROBING_MARGIN);				
 			  	break;
-		      case 4:
-			  	probePos.x = (X_BED_SIZE - PROBING_MARGIN);
+		      case 3:
+				  	probePos.x = (X_BED_SIZE - PROBING_MARGIN);
 		        probePos.y = (Y_BED_SIZE - PROBING_MARGIN);				
 			  	break;
 		  }
 		  probe.offset.z = 0;
 		  measured_z = probe.probe_at_point(probePos, PROBE_PT_STOW, 4, true, false);
 		  if(isnan(measured_z)){
-		  	#if HAS_LCD_MENU
-			LCD_MESSAGEPGM_P(PSTR("Fail! Move down Probe."));
-			#endif
-
-			#if HAS_DWIN_LCD
-			DWIN_G29_Show_Messge(G29_CATCH_PROBE_TOO_HIGH);
-			#endif
-			G29_RETURN(isnan(measured_z));		
+				TERN_(HAS_LCD_MENU,LCD_MESSAGEPGM_P(PSTR("Fail! Move down Probe.")));
+				TERN_(HAS_DWIN_LCD,DWIN_G29_Show_Messge(G29_CATCH_FAIL1));
+				G29_RETURN(isnan(measured_z));		
 		  }
-		  else{		  	
-		  	offsetz[i] = measured_z;
-			#if HAS_DWIN_LCD
-			DWIN_G29_Show_Messge(G29_CATCH_NORMAL,i+1);
-			#endif
+		  else{
+				#if HAS_DWIN_LCD
+				DWIN_G29_Show_Messge(G29_CATCH_NORMAL,i+1);
+				#endif
+				if(measured_z > max_offsetz) max_offsetz = measured_z;
+			  if(measured_z < min_offsetz) min_offsetz = measured_z;
 		  }
 		}
-		LOOP_L_N(i, 5){
-			if(offsetz[i] > max_offsetz)
-				max_offsetz = offsetz[i];
-		    if(offsetz[i] < min_offsetz)
-				min_offsetz = offsetz[i];			
-		}
-		if(max_offsetz - min_offsetz > 1.0){
-			#if HAS_LCD_MENU
-			LCD_MESSAGEPGM_P(PSTR("fail, manual level!"));
-			#endif
-
-			#if HAS_DWIN_LCD
-			DWIN_G29_Show_Messge(G29_CATCH_FAIL);
-			#endif
+		SERIAL_ECHOLNPAIR("max_offsetz = ", max_offsetz);
+		SERIAL_ECHOLNPAIR("min_offsetz = ", min_offsetz);
+		if(ABS(max_offsetz - min_offsetz) > 2.0){			
+			TERN_(HAS_LCD_MENU,LCD_MESSAGEPGM_P(PSTR("Over range, manual level!")));
+			TERN_(HAS_DWIN_LCD,DWIN_G29_Show_Messge(G29_CATCH_FAIL2));
 			G29_RETURN(false);
-		}
+		}		
 		probe.offset.z = 0.0 - min_offsetz;
-		#ifdef EEPROM_SETTINGS
-		settings.save();				
-		#endif
-		#if HAS_LCD_MENU		
-		LCD_MESSAGEPGM_P(PSTR("Offset catched!"));
-		#endif
-
-		#if HAS_DWIN_LCD
-		DWIN_G29_Show_Messge(G29_CATCH_DONE);
-		#endif
+		SERIAL_ECHOLNPAIR("probe.offset.z = ", probe.offset.z);
+		TERN_(EEPROM_SETTINGS,	settings.save());
+		TERN_(HAS_LCD_MENU,	LCD_MESSAGEPGM_P(PSTR("Offset catched!")));
+		TERN_(HAS_DWIN_LCD,DWIN_G29_Show_Messge(G29_CATCH_DONE));		
 		G29_RETURN(isnan(measured_z));
 	}
 	else	
@@ -691,6 +666,8 @@ G29_TYPE GcodeSuite::G29() {
     bool zig = PR_OUTER_END & 1;  // Always end at RIGHT and BACK_PROBE_BED_POSITION
     measured_z = 0;		
     xy_int8_t meshCount;
+
+		TERN_(HAS_DWIN_LCD,DWIN_G29_Show_Messge(G29_MESH_READY));
 
     // Outer loop is X with PROBE_Y_FIRST enabled
     // Outer loop is Y with PROBE_Y_FIRST disabled
@@ -720,7 +697,7 @@ G29_TYPE GcodeSuite::G29() {
         if (verbose_level) SERIAL_ECHOLNPAIR("Probing mesh point ", int(pt_index), "/", abl_points, ".");
         TERN_(HAS_DISPLAY, ui.status_printf_P(0, PSTR(S_FMT " %i/%i"), GET_TEXT(MSG_PROBING_MESH), int(pt_index), int(abl_points)));
         #endif
-			  TERN_(HAS_DWIN_LCD,DWIN_G29_Show_Messge(G29_MESH_NORMAL,int(pt_index),int(abl_points)));
+			  TERN_(HAS_DWIN_LCD,DWIN_G29_Show_Messge(G29_MESH_PROBING,int(pt_index),int(abl_points)));
 
 				#ifdef DEBUG_LEVELING_PROBING	
 				float sum_z = 0.0;
@@ -775,12 +752,6 @@ G29_TYPE GcodeSuite::G29() {
 
       } // inner
     } // outer
-		#if ALL(OPTION_BED_COATING, AUTO_BED_LEVELING_BILINEAR, OPTION_PL08N)
-		z_values[0][0] = (z_values[0][1] + z_values[1][0])/2;
-		z_values[0][GRID_MAX_POINTS_Y-1] = (z_values[1][GRID_MAX_POINTS_Y-1] + z_values[0][GRID_MAX_POINTS_Y-2])/2;
-		z_values[GRID_MAX_POINTS_X-1][0] = (z_values[GRID_MAX_POINTS_X-2][0] + z_values[GRID_MAX_POINTS_X-1][1])/2;
-		z_values[GRID_MAX_POINTS_X-1][GRID_MAX_POINTS_Y-1] = (z_values[GRID_MAX_POINTS_X-1][GRID_MAX_POINTS_Y-2] + z_values[GRID_MAX_POINTS_X-2][GRID_MAX_POINTS_Y-1])/2;
-		#endif
   #elif ENABLED(AUTO_BED_LEVELING_3POINT)
 
     // Probe at 3 arbitrary points

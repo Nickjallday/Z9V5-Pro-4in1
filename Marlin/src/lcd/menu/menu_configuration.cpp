@@ -361,14 +361,15 @@ void menu_advanced_settings();
 #endif
 
 #if ENABLED(OPTION_WIFI_MODULE)
-void _lcd_onoffWiFi(){	
-	ui.return_to_status();
+#include "../../module/settings.h"
+void _lcd_onoffWiFi(){
+	settings.save();
+	ui.return_to_status();	
 	WIFI_onoff();
 	if(WiFi_Enabled)
-		LCD_MESSAGEPGM_P(PSTR("WiFi ON "));
+		LCD_MESSAGEPGM_P(PSTR("WiFi ON..."));
 	else 
-		LCD_MESSAGEPGM_P(PSTR("WiFi OFF"));
-	settings.save();
+		LCD_MESSAGEPGM_P(PSTR("WiFi OFF!!"));	
 }
 #endif
 
@@ -413,10 +414,6 @@ void menu_configuration() {
       SUBMENU(MSG_IDEX_MENU, menu_idex);
     #endif
 
-		#if ENABLED(OPTION_WIFI_MODULE)
-		  EDIT_ITEM(bool, MSG_WIFI_MODULE, &WiFi_Enabled, _lcd_onoffWiFi);
-		#endif
-
     #if ENABLED(BLTOUCH)
       SUBMENU(MSG_BLTOUCH, menu_bltouch);
     #endif
@@ -450,6 +447,10 @@ void menu_configuration() {
   #if ENABLED(POWER_LOSS_RECOVERY)
     EDIT_ITEM(bool, MSG_OUTAGE_RECOVERY, &recovery.enabled, recovery.changed);
   #endif
+	
+	#if ENABLED(OPTION_WIFI_MODULE)
+		EDIT_ITEM(bool, MSG_WIFI_MODULE, &WiFi_Enabled, _lcd_onoffWiFi);
+	#endif
 
   // Preheat configurations
   #if PREHEAT_COUNT && DISABLED(SLIM_LCD_MENUS)
